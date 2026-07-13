@@ -862,7 +862,9 @@ function renderAdminShell() {
     ${(() => {
       const d = db();
       if (d.statusEmpresa !== 'trial' || !d.trialTerminaEm) return '';
-      const diasRestantes = Math.ceil((new Date(d.trialTerminaEm) - new Date()) / 86400000);
+      const hoje0h = new Date(); hoje0h.setHours(0, 0, 0, 0);
+      const fimTrial0h = new Date(d.trialTerminaEm); fimTrial0h.setHours(0, 0, 0, 0);
+      const diasRestantes = Math.round((fimTrial0h - hoje0h) / 86400000);
       return `<div style="margin:0 16px 12px; padding:8px 10px; background:var(--warn-bg); border:1px solid var(--warn-border); border-radius:8px; font-size:11px; color:var(--warn)">
         ${diasRestantes > 0 ? `🕐 Teste grátis: faltam ${diasRestantes} dia${diasRestantes > 1 ? 's' : ''}` : '⚠️ Seu teste grátis acabou'}
       </div>`;
