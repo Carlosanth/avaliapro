@@ -15,6 +15,7 @@ function campoCustomInputHTML(campo, prefix, valor) {
 
 let _abaFornecedoresAtual = 'ativos';
 let _filtroFornecedores = { busca: '', tipo: '', setor: '', criticidade: '', vencimento: '' };
+let _novoFornecedorAberto = false;
 
 function labelTipoFornecedor(tipo) {
   if (tipo === 'produto') return 'Produto';
@@ -40,7 +41,9 @@ function renderAdFornecedores() {
   const setoresUnicos = [...new Set(d.fornecedores.map(f => f.setor).filter(Boolean))].sort();
 
   document.getElementById('ad-page-fornecedores').innerHTML = `
-    <div class="page-header"><div><h2>Fornecedores</h2><p>Cadastro de fornecedores e arquivo de documentações (alvará, contratos, certidões etc)</p></div></div>
+    <div class="page-header">
+      <div><h2>Fornecedores</h2><p>Cadastro de fornecedores e arquivo de documentações (alvará, contratos, certidões etc)</p></div>
+    </div>
     ${totalVencendo ? `
       <div class="alert ${vencendoCount.vencidos.length ? 'alert-danger' : 'alert-warn'}" style="display:flex; align-items:center; gap:8px; font-size:12px">
         <span>${vencendoCount.vencidos.length ? `⚠️ ${vencendoCount.vencidos.length} vencido(s)` : ''}${vencendoCount.vencidos.length && vencendoCount.proximos.length ? ' · ' : ''}${vencendoCount.proximos.length ? `🕐 ${vencendoCount.proximos.length} vencendo em breve` : ''}</span>
@@ -50,35 +53,44 @@ function renderAdFornecedores() {
       <div class="card-title">📥 Documentos enviados pelo portal — aguardando aprovação</div>
       <div id="pendentes-aprovacao-wrap"></div>
     </div>
-    <div class="card">
-      <div class="card-title">Novo fornecedor</div>
-      <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr">
-        <div class="form-group"><label>CNPJ</label>
-          <div style="display:flex; gap:6px">
-            <input type="text" id="nf-cnpj" placeholder="00.000.000/0000-00" style="flex:1" oninput="this.value = formatarCNPJ(this.value)">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="buscarNomePorCnpjCadastro()">🔍 Buscar</button>
+    <div class="card sup-new-card ${_novoFornecedorAberto ? 'open' : ''}" id="novo-fornecedor-card">
+      <div class="sup-new-card-header" onclick="toggleNovoFornecedorCard()">
+        <div class="sup-new-icon">+</div>
+        <div class="sup-new-card-title-wrap">
+          <div class="sup-new-card-title">Novo fornecedor</div>
+          <div class="sup-new-card-subtitle">Preencha o CNPJ para autopreencher os campos.</div>
+        </div>
+        <div class="sup-new-chevron">⌄</div>
+      </div>
+      <div class="sup-new-card-body" id="novo-fornecedor-body" style="${_novoFornecedorAberto ? '' : 'display:none'}">
+        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr">
+          <div class="form-group"><label>CNPJ</label>
+            <div style="display:flex; gap:6px">
+              <input type="text" id="nf-cnpj" placeholder="00.000.000/0000-00" style="flex:1" oninput="this.value = formatarCNPJ(this.value)">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="buscarNomePorCnpjCadastro()">🔍 Buscar</button>
+            </div>
+            <p id="nf-cnpj-status" style="font-size:11px; margin-top:4px"></p>
           </div>
-          <p id="nf-cnpj-status" style="font-size:11px; margin-top:4px"></p>
+          <div class="form-group"><label>Nome</label><input type="text" id="nf-nome" placeholder="Nome do fornecedor"></div>
+          <div class="form-group"><label>Tipo</label><select id="nf-tipo">${optionsTipoFornecedorHTML('servico')}</select></div>
+          <div class="form-group"><label>Setor</label><input type="text" id="nf-setor" placeholder="Ex: Qualidade"></div>
         </div>
-        <div class="form-group"><label>Nome</label><input type="text" id="nf-nome" placeholder="Nome do fornecedor"></div>
-        <div class="form-group"><label>Tipo</label><select id="nf-tipo">${optionsTipoFornecedorHTML('servico')}</select></div>
-        <div class="form-group"><label>Setor</label><input type="text" id="nf-setor" placeholder="Ex: Qualidade"></div>
-      </div>
-      <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr">
-        <div class="form-group"><label>E-mail</label><input type="email" id="nf-email" placeholder="contato@fornecedor.com"></div>
-        <div class="form-group"><label>Telefone</label><input type="text" id="nf-telefone" placeholder="(00) 00000-0000" oninput="this.value = formatarTelefone(this.value)"></div>
-        <div class="form-group"><label>Endereço</label><input type="text" id="nf-endereco" placeholder="Rua, número, cidade/UF"></div>
-        <div class="form-group"><label>Criticidade</label>
-          <select id="nf-criticidade">
-            <option value="baixa">Baixa</option>
-            <option value="media" selected>Média</option>
-            <option value="alta">Alta</option>
-          </select>
+        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr">
+          <div class="form-group"><label>E-mail</label><input type="email" id="nf-email" placeholder="contato@fornecedor.com"></div>
+          <div class="form-group"><label>Telefone</label><input type="text" id="nf-telefone" placeholder="(00) 00000-0000" oninput="this.value = formatarTelefone(this.value)"></div>
+          <div class="form-group"><label>Endereço</label><input type="text" id="nf-endereco" placeholder="Rua, número, cidade/UF"></div>
+          <div class="form-group"><label>Criticidade</label>
+            <select id="nf-criticidade">
+              <option value="baixa">Baixa</option>
+              <option value="media" selected>Média</option>
+              <option value="alta">Alta</option>
+            </select>
+          </div>
         </div>
+        ${d.camposFornecedorCustom.length ? `<div class="form-row three">${d.camposFornecedorCustom.map(c => campoCustomInputHTML(c, 'nf-extra-')).join('')}</div>` : ''}
+        <button class="btn btn-primary" onclick="addFornecedorAd()">Adicionar fornecedor</button>
+        <p style="font-size:11px; color:var(--text-muted); margin-top:8px">Quer adicionar outros campos (contrato, contato, categoria etc)? Vá em <b>Configurações › Campos do fornecedor</b>.</p>
       </div>
-      ${d.camposFornecedorCustom.length ? `<div class="form-row three">${d.camposFornecedorCustom.map(c => campoCustomInputHTML(c, 'nf-extra-')).join('')}</div>` : ''}
-      <button class="btn btn-primary" onclick="addFornecedorAd()">Adicionar fornecedor</button>
-      <p style="font-size:11px; color:var(--text-muted); margin-top:8px">Quer adicionar outros campos (contrato, contato, categoria etc)? Vá em <b>Configurações › Campos do fornecedor</b>.</p>
     </div>
     <div class="card">
       <div class="tab-bar" style="margin-bottom:0">
@@ -94,8 +106,8 @@ function renderAdFornecedores() {
         <div class="form-group" style="min-width:170px"><label>Vencimento</label><select id="ff-vencimento" onchange="aplicarFiltroFornecedores()"><option value="">Todos</option><option value="proximo" ${_filtroFornecedores.vencimento === 'proximo' ? 'selected' : ''}>Vencendo em breve</option><option value="vencido" ${_filtroFornecedores.vencimento === 'vencido' ? 'selected' : ''}>Vencidos</option></select></div>
         <button class="sup-toolbar-btn" onclick="abrirColunasVisiveisFornecedor()">⚙️ Colunas visíveis</button>
       </div>
-      <div id="fornecedores-lista-ad"></div>
     </div>
+    <div id="fornecedores-lista-ad"></div>
   `;
   renderFornecedoresListaAd();
   renderPendentesAprovacao();
@@ -104,6 +116,17 @@ function renderAdFornecedores() {
 function mudarAbaFornecedores(aba) {
   _abaFornecedoresAtual = aba;
   renderAdFornecedores();
+}
+
+// Card "Novo fornecedor": vem recolhido por padrão, abre/fecha clicando no
+// próprio cabeçalho do cartão (ícone "+" gira e vira "×").
+function toggleNovoFornecedorCard(forcarAberto) {
+  _novoFornecedorAberto = typeof forcarAberto === 'boolean' ? forcarAberto : !_novoFornecedorAberto;
+  const card = document.getElementById('novo-fornecedor-card');
+  const body = document.getElementById('novo-fornecedor-body');
+  if (card) card.classList.toggle('open', _novoFornecedorAberto);
+  if (body) body.style.display = _novoFornecedorAberto ? 'block' : 'none';
+  if (_novoFornecedorAberto && card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function aplicarFiltroFornecedores() {
@@ -267,7 +290,7 @@ function renderFornecedoresListaAd() {
   if (filtro.vencimento) lista = lista.filter(f => piorStatusDocumentosFornecedor(d, f.id) === filtro.vencimento);
 
   if (!lista.length) {
-    wrap.innerHTML = `<div class="empty-state"><p>${aba === 'desativados' ? 'Nenhum fornecedor desativado.' : aba === 'diversos' ? 'Nenhum fornecedor diverso — eles aparecem aqui quando cadastrados rápido pela tela de Avaliar.' : 'Nenhum fornecedor encontrado com esses filtros.'}</p></div>`;
+    wrap.innerHTML = `<div class="card"><div class="empty-state"><p>${aba === 'desativados' ? 'Nenhum fornecedor desativado.' : aba === 'diversos' ? 'Nenhum fornecedor diverso — eles aparecem aqui quando cadastrados rápido pela tela de Avaliar.' : 'Nenhum fornecedor encontrado com esses filtros.'}</p></div></div>`;
     return;
   }
 
@@ -345,25 +368,26 @@ function renderFornecedoresListaAd() {
         </div>
         <div class="sup-actions" onclick="event.stopPropagation()">
           ${aba !== 'desativados' ? `
-            <button class="sup-btn" onclick="enviarCobrancaConsolidadaFornecedor('${f.id}')">✉️ Cobrar</button>
+            <button class="sup-btn sup-btn-strong" onclick="enviarCobrancaConsolidadaFornecedor('${f.id}')">Cobrar Pendências</button>
+            <button class="sup-btn-solid" onclick="toggleFornecedorDocsForm('${f.id}')">Novo Documento</button>
             <div class="sup-dropdown-wrap">
-              <button class="sup-btn" onclick="toggleMenuFornecedor('${f.id}', event)">➕ Mais</button>
+              <button class="sup-icon-btn" onclick="toggleMenuFornecedor('${f.id}', event)" title="Mais opções">⋮</button>
               <div class="sup-dropdown" id="menu-forn-${f.id}">
                 <button onclick="abrirEdicaoFornecedor('${f.id}')">✏️ Editar</button>
-                <button onclick="toggleFornecedorDocsForm('${f.id}')">📁 Documentos</button>
                 <button onclick="gerarLinkPortalFornecedor('${f.id}')">🔗 Link do portal</button>
+                ${aba === 'diversos' ? `<button onclick="moverFornecedorParaFixo('${f.id}')">📌 Mover pra fixo</button>` : ''}
+                <button onclick="desativarFornecedorAd('${f.id}')" style="color:var(--danger)">🗑️ Remover</button>
               </div>
             </div>
-            ${aba === 'diversos' ? `<button class="sup-btn sup-btn-success" onclick="moverFornecedorParaFixo('${f.id}')">📌 Mover pra fixo</button>` : ''}
-            <button class="sup-btn sup-btn-danger" onclick="desativarFornecedorAd('${f.id}')">Remover</button>
           ` : `
             <button class="sup-btn sup-btn-success" onclick="reativarFornecedorAd('${f.id}')">↺ Reativar</button>
             <button class="sup-btn sup-btn-danger" onclick="excluirFornecedorDefinitivo('${f.id}')">Excluir definitivo</button>
           `}
         </div>
+        ${aba !== 'desativados' ? `<span class="sup-chevron-ind">⌄</span>` : ''}
       </div>
       ${aba !== 'desativados' ? `
-      <div id="docs-wrap-${f.id}" style="display:none; padding:0 10px 16px 27px">
+      <div id="docs-wrap-${f.id}" style="display:none; padding:14px 18px 18px 37px; border-top:1px solid var(--border)">
         <div id="doc-form-${f.id}" class="card" style="display:none; margin-bottom:10px; background:var(--surface2)">
           <p style="font-size:12px; font-weight:600; margin-bottom:10px">Novo documento</p>
           <div class="form-row three">
@@ -955,6 +979,7 @@ async function addFornecedorAd() {
   if (error) { toast('Erro ao cadastrar fornecedor: ' + error.message); return; }
 
   addLog('fornecedor_criado', `${currentUser.email} cadastrou o fornecedor "${nome}"`);
+  _novoFornecedorAberto = false;
   await carregarFornecedores();
   renderAdFornecedores();
   toast('Fornecedor adicionado!');
