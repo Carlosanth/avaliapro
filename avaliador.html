@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AvaliaPro — Acesso do avaliador</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- LOGIN — só isso, sem cadastro/preço/planos. Link fixo pra avaliador. -->
+<div id="login-screen">
+  <div class="auth-shell" id="auth-shell">
+
+    <aside class="auth-brand">
+      <div>
+        <svg class="auth-seal" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="60" cy="60" r="54" stroke="currentColor" stroke-width="2" stroke-dasharray="3 5"/>
+          <circle cx="60" cy="60" r="44" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M40 61 L53 75 L82 45" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h1 class="auth-wordmark">AvaliaPro</h1>
+        <p class="auth-tagline">Área do avaliador</p>
+        <ul class="auth-points">
+          <li>Veja seus formulários pendentes</li>
+          <li>Envie suas avaliações</li>
+          <li>Acompanhe seu histórico de envios</li>
+        </ul>
+      </div>
+      <div class="auth-brand-foot">Plataforma de gestão de fornecedores</div>
+    </aside>
+
+    <div class="auth-perf" aria-hidden="true"></div>
+
+    <section class="auth-panel">
+      <div id="login-form-wrap">
+        <div class="auth-head">
+          <h2>Entrar</h2>
+          <p>Acesse suas avaliações</p>
+        </div>
+        <div class="auth-error" id="login-error"></div>
+        <div class="auth-form">
+          <div class="form-group">
+            <label>E-mail</label>
+            <input type="email" id="login-email" placeholder="seuemail@empresa.com" autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label>Senha</label>
+            <input type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+          </div>
+          <button class="btn btn-primary btn-block" onclick="doLogin()">Entrar</button>
+        </div>
+        <p class="auth-switch">Esqueceu a senha ou não tem acesso ainda? Fale com o administrador da sua empresa.</p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main" id="main"></main>
+</div>
+
+<div id="toast"></div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<script src="supabase-client.js"></script>
+<script src="seed-data.js"></script>
+<script src="js/core.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/unidades.js"></script>
+<script src="js/fornecedores.js"></script>
+<script src="js/formularios.js"></script>
+<script src="js/avaliar.js"></script>
+<script src="js/usuarios.js"></script>
+<script src="js/avaliacoes-recebidas.js"></script>
+<script src="js/relatorios-pdf.js"></script>
+<script src="js/config.js"></script>
+<script src="js/init.js"></script>
+</body>
+</html>
