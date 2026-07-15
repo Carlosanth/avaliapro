@@ -440,6 +440,7 @@ function renderFornecedoresListaAd() {
               <div class="sup-dropdown" id="menu-forn-${f.id}">
                 <button onclick="abrirEdicaoFornecedor('${f.id}')">${ic('pencil', 14)} Editar</button>
                 <button onclick="gerarLinkPortalFornecedor('${f.id}')">${ic('link', 14)} Link do portal</button>
+                <button onclick="abrirAnexosFornecedor('${f.id}'); document.getElementById('menu-forn-${f.id}').classList.remove('open')">${ic('paperclip', 14)} Anexos</button>
                 ${aba === 'diversos' ? `<button onclick="moverFornecedorParaFixo('${f.id}')">${ic('pin', 14)} Mover pra fixo</button>` : ''}
                 <button onclick="desativarFornecedorAd('${f.id}')" class="sup-dropdown-danger">${ic('trash', 14)} Remover</button>
               </div>
@@ -713,6 +714,117 @@ function toggleMenuFornecedor(id, event) {
       }
     });
   }, 0);
+}
+
+// ---------- Anexos gerais do fornecedor (sem validade — ficha cadastral, questionário assinado etc) ----------
+// Cache temporário só pra função de baixar não precisar escapar nome de arquivo dentro do onclick.
+let anexosFornecedorTemp = {};
+
+async function abrirAnexosFornecedor(fornecedorId) {
+  const f = db().fornecedores.find(x => x.id === fornecedorId);
+  openModal(`
+    <h3>Anexos gerais${f ? ' — ' + f.nome : ''}</h3>
+    <p style="font-size:11px; color:var(--text-muted); margin-bottom:14px">Arquivos de referência sem data de validade (ex: ficha cadastral, questionário de qualificação assinado). Pra documento com vencimento, use "Novo Documento".</p>
+    <div class="form-group" style="margin-bottom:14px">
+      <div class="file-drop" onclick="document.getElementById('anexo-file-input').click()" style="padding:10px; cursor:pointer">
+        <input type="file" id="anexo-file-input" style="display:none" onchange="enviarAnexoFornecedor('${fornecedorId}', this)">
+        <p id="anexo-file-label" style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px; margin:0">${ic('paperclip', 13)} Clique para selecionar arquivo</p>
+      </div>
+    </div>
+    <div id="anexos-lista-wrap"><p style="font-size:12px; color:var(--text-muted)">Carregando...</p></div>
+  `);
+  await renderAnexosLista(fornecedorId);
+}
+
+async function renderAnexosLista(fornecedorId) {
+  const wrap = document.getElementById('anexos-lista-wrap');
+  if (!wrap) return;
+
+  const { data, error } = await supabaseClient
+    .from('fornecedores_anexos')
+    .select('*')
+    .eq('fornecedor_id', fornecedorId)
+    .order('enviado_em', { ascending: false });
+
+  if (error) { wrap.innerHTML = `<p style="font-size:12px; color:var(--danger)">Erro ao carregar anexos: ${error.message}</p>`; return; }
+
+  if (!data || !data.length) { wrap.innerHTML = '<p style="font-size:12px; color:var(--text-muted)">Nenhum anexo ainda.</p>'; return; }
+
+  data.forEach(a => { anexosFornecedorTemp[a.id] = { caminhoStorage: a.caminho_storage, nomeArquivo: a.nome_arquivo }; });
+
+  wrap.innerHTML = data.map(a => `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:12.5px">
+      <div style="min-width:0">
+        <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${a.nome_arquivo}</div>
+        <div style="font-size:11px; color:var(--text-muted)">${new Date(a.enviado_em).toLocaleDateString('pt-BR')}</div>
+      </div>
+      <div style="display:flex; gap:6px; flex-shrink:0">
+        <button class="sup-doc-icon-btn" onclick="baixarAnexoFornecedor('${a.id}')" title="Baixar">${ic('fileText', 14)}</button>
+        <button class="sup-doc-icon-btn sup-doc-icon-btn-danger" onclick="removerAnexoFornecedor('${a.id}','${fornecedorId}')" title="Excluir">${ic('trash', 14)}</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function enviarAnexoFornecedor(fornecedorId, input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const label = document.getElementById('anexo-file-label');
+  if (label) label.innerHTML = `${ic('paperclip', 13)} Enviando...`;
+
+  const nomeArquivoSeguro = sanitizarNomeArquivo(file.name);
+  const caminhoStorage = `anexos/${currentUser.empresaId}/${fornecedorId}/${Date.now()}_${nomeArquivoSeguro}`;
+
+  const { error: uploadErr } = await supabaseClient.storage.from('documentos-fornecedores').upload(caminhoStorage, file);
+  if (uploadErr) {
+    toast('Erro ao enviar arquivo: ' + uploadErr.message);
+    if (label) label.innerHTML = `${ic('paperclip', 13)} Clique para selecionar arquivo`;
+    return;
+  }
+
+  const { error } = await supabaseClient.from('fornecedores_anexos').insert({
+    empresa_id: currentUser.empresaId,
+    fornecedor_id: fornecedorId,
+    nome_arquivo: file.name,
+    caminho_storage: caminhoStorage,
+    enviado_por: currentUser.id,
+  });
+
+  if (error) { toast('Erro ao salvar anexo: ' + error.message); return; }
+
+  addLog('anexo_fornecedor_adicionado', `${currentUser.email} adicionou o anexo "${file.name}"`);
+  if (label) label.innerHTML = `${ic('paperclip', 13)} Clique para selecionar arquivo`;
+  input.value = '';
+  toast('Anexo adicionado!');
+  await renderAnexosLista(fornecedorId);
+}
+
+async function baixarAnexoFornecedor(anexoId) {
+  const info = anexosFornecedorTemp[anexoId];
+  if (!info) return;
+
+  const { data, error } = await supabaseClient.storage.from('documentos-fornecedores').download(info.caminhoStorage);
+  if (error) { toast('Erro ao abrir arquivo: ' + error.message); return; }
+
+  const url = URL.createObjectURL(data);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = info.nomeArquivo;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function removerAnexoFornecedor(anexoId, fornecedorId) {
+  if (!confirm('Excluir esse anexo?')) return;
+
+  const { error } = await supabaseClient.from('fornecedores_anexos').delete().eq('id', anexoId);
+  if (error) { toast('Erro ao excluir: ' + error.message); return; }
+
+  delete anexosFornecedorTemp[anexoId];
+  addLog('anexo_fornecedor_removido', `${currentUser.email} removeu um anexo`);
+  toast('Anexo removido.');
+  await renderAnexosLista(fornecedorId);
 }
 
 async function gerarLinkPortalFornecedor(fornecedorId) {
