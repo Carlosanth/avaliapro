@@ -1582,8 +1582,14 @@ tr:hover td {
 }
 
 .sup-meta-item .ic {
-  opacity: .7;
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  opacity: .65;
+  color: var(--text-muted);
+}
+
+.sup-badge .ic-svg {
+  margin-right: -1px;
 }
 
 .sup-meta-item.mono {
@@ -1600,21 +1606,27 @@ tr:hover td {
 .sup-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
-  padding-top: 2px;
+}
+
+.ic-svg {
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .sup-btn {
   display: inline-flex;
   align-items: center;
+  height: 34px;
   gap: 6px;
-  padding: 5px 10px;
+  padding: 0 14px;
   border-radius: 8px;
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--text);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
   transition: all .15s ease;
@@ -1648,19 +1660,19 @@ tr:hover td {
 
 .sup-btn-strong {
   font-weight: 600;
-  padding: 7px 14px;
 }
 
 .sup-btn-solid {
   display: inline-flex;
   align-items: center;
+  height: 34px;
   gap: 6px;
-  padding: 7px 14px;
+  padding: 0 14px;
   border-radius: 8px;
   border: 1px solid var(--accent);
   background: var(--accent);
   color: #fff;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   transition: all .15s ease;
@@ -1677,8 +1689,8 @@ tr:hover td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border-radius: 8px;
   border: 1px solid var(--border-strong);
   background: var(--surface);
@@ -1693,11 +1705,51 @@ tr:hover td {
   background: var(--surface2);
 }
 
+.sup-more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-sec);
+  cursor: pointer;
+  transition: all .15s ease;
+  font-family: inherit;
+}
+
+.sup-more-btn:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.sup-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.sup-dropdown button .ic-svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.sup-dropdown-danger {
+  color: var(--danger) !important;
+}
+
+.sup-dropdown-danger .ic-svg {
+  color: var(--danger) !important;
+}
+
 .sup-chevron-ind {
   flex-shrink: 0;
   align-self: center;
+  display: inline-flex;
   color: var(--text-muted);
-  font-size: 15px;
   padding: 4px 2px;
   transition: transform .15s ease;
 }
@@ -1726,6 +1778,164 @@ tr:hover td {
   background: var(--surface2);
   border-color: var(--border-strong);
   color: var(--text);
+}
+
+/* ---------- Lista de documentos (cards separados, dentro do fornecedor expandido) ---------- */
+.sup-doc-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sup-doc-count-badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-sec);
+}
+
+.sup-doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sup-doc-card {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  box-shadow: 0 1px 2px rgba(8,60,81,0.05);
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+
+.sup-doc-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 2px 6px rgba(8,60,81,0.08);
+}
+
+.sup-doc-col {
+  flex: 1;
+  min-width: 100px;
+}
+
+.sup-doc-col-nome {
+  flex: 1.4;
+}
+
+.sup-doc-col-obs {
+  flex: 1.3;
+}
+
+.sup-doc-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.sup-doc-value {
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.sup-doc-value.strong {
+  font-weight: 600;
+}
+
+.sup-doc-value.muted {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.sup-doc-status-note {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  margin-top: 4px;
+}
+
+.sup-doc-status-note.danger { color: var(--danger); }
+.sup-doc-status-note.success { color: var(--success); }
+
+.sup-doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sup-doc-sem-arquivo {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+.sup-doc-btn-abrir {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 7px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.sup-doc-btn-abrir:hover {
+  background: var(--accent-border);
+}
+
+.sup-doc-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .15s ease;
+  flex-shrink: 0;
+}
+
+.sup-doc-icon-btn:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.sup-doc-icon-btn-danger:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 
 /* ---- Editor de layout de documentos (blocos) ---- */

@@ -80,7 +80,7 @@ function abrirLembreteManualMailto() {
 
   const emails = pendentes.map(u => u.email).join(',');
   const assunto = 'Avaliações pendentes';
-  const corpo = `Olá,\n\nExistem avaliações pendentes aguardando seu preenchimento. Por gentileza, acesse ${linkAvaliador} para efetuar a avaliação.\n\nAtenciosamente,\n${db().empresa.nome || 'Empresa'}`;
+  const corpo = `Olá,\n\nExistem avaliações pendentes aguardando seu preenchimento. Por gentileza, acesse ${linkAvaliador} para efetuar a avaliação.\n\nAtenciosamente,\n${db().nomeEmpresa || 'Empresa'}`;
   const link = `mailto:${encodeURIComponent(emails)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
 
   addLog('lembrete_avaliadores_manual_mailto', `${currentUser.email} abriu o cliente de e-mail pra ${pendentes.length} avaliador(es) pendente(s) (Resend ainda não configurado)`);

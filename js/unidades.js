@@ -30,7 +30,7 @@ async function buscarDadosPorCnpjUnidade() {
   const existente = d.unidades.find(u => (u.cnpj || '').replace(/\D/g, '') === cnpjLimpo);
   let avisoDuplicado = '';
   if (existente) {
-    avisoDuplicado = `<div style="color:var(--warn); font-weight:600; margin-bottom:2px">⚠️ Esse CNPJ já está cadastrado como "${existente.nome}" — você pode cadastrar mesmo assim.</div>`;
+    avisoDuplicado = `<div style="color:var(--warn); font-weight:600; margin-bottom:2px; display:flex; align-items:center; gap:6px">${ic('alertTriangle', 13)} Esse CNPJ já está cadastrado como "${existente.nome}" — você pode cadastrar mesmo assim.</div>`;
   }
 
   statusEl.innerHTML = avisoDuplicado + '<span style="color:var(--text-muted)">Buscando...</span>';
@@ -56,7 +56,7 @@ async function buscarDadosPorCnpjUnidade() {
     if (endereco) enderecoInput.value = endereco;
     const telefone = montarTelefonePorCnpj(dadosEncontrados);
     if (telefone) telefoneInput.value = formatarTelefone(telefone);
-    statusEl.innerHTML = avisoDuplicado + '<span style="color:var(--success); font-weight:600">🟢 Encontrado — confira os dados antes de salvar</span>';
+    statusEl.innerHTML = avisoDuplicado + `<span style="color:var(--success); font-weight:600; display:inline-flex; align-items:center; gap:6px">${ic('check', 12)} Encontrado — confira os dados antes de salvar</span>`;
   } else {
     statusEl.innerHTML = avisoDuplicado + '<span style="color:var(--warn); font-weight:600">Não achamos os dados automaticamente, digite manualmente</span>';
   }
@@ -75,7 +75,7 @@ function renderAdMeusDocumentos() {
           <label>CNPJ <span style="color:var(--text-muted); font-weight:400">(opcional)</span></label>
           <div style="display:flex; gap:6px">
             <input type="text" id="un-cnpj" placeholder="00.000.000/0000-00" style="flex:1" oninput="this.value = formatarCNPJ(this.value)">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="buscarDadosPorCnpjUnidade()">🔍 Buscar</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="buscarDadosPorCnpjUnidade()" style="display:inline-flex; align-items:center; gap:6px">${ic('search', 13)} Buscar</button>
           </div>
           <p id="un-cnpj-status" style="font-size:11px; margin-top:4px"></p>
         </div>
@@ -123,20 +123,26 @@ function renderUnidadesListaAd() {
         <div style="display:flex; gap:10px; flex:1; min-width:0">
           <span class="sup-status-dot" style="background:${dotCor}"></span>
           <div style="flex:1; min-width:0">
-            <div class="sup-name-line"><span class="sup-name">${u.nome}</span></div>
+            <div class="sup-name-line"><span class="sup-name" title="${u.nome}">${truncarNomeForn(u.nome)}</span></div>
             <div class="sup-meta">
-              ${u.endereco ? metaItemHTML('📍', u.endereco) : ''}
-              ${u.telefone ? metaItemHTML('📞', u.telefone) : ''}
-              ${u.cnpj ? metaItemHTML('🏢', u.cnpj) : ''}
-              ${badgeHTML(`📁 ${pluralDocs(docs.length)}`, classeDoc)}
+              ${u.endereco ? metaItemHTML(ic('pin', 12.5), u.endereco) : ''}
+              ${u.telefone ? metaItemHTML(ic('phone', 12.5), u.telefone) : ''}
+              ${u.cnpj ? metaItemHTML(ic('building', 12.5), u.cnpj, true) : ''}
+              ${badgeHTML(`${ic('folder', 11)} ${pluralDocs(docs.length)}`, classeDoc)}
             </div>
           </div>
         </div>
         <div class="sup-actions" onclick="event.stopPropagation()">
-          <button class="sup-btn" onclick="abrirEdicaoUnidade('${u.id}')">✏️ Editar</button>
-          <button class="sup-btn" onclick="toggleUnidadeDocsForm('${u.id}')">Documentos ▾</button>
-          <button class="sup-btn sup-btn-danger" onclick="excluirUnidade('${u.id}')">Excluir</button>
+          <button class="sup-btn-solid" onclick="toggleUnidadeDocsForm('${u.id}')">Novo Documento</button>
+          <div class="sup-dropdown-wrap">
+            <button class="sup-more-btn" onclick="toggleMenuUnidade('${u.id}', event)" title="Mais opções">${ic('moreVertical', 17)}</button>
+            <div class="sup-dropdown" id="menu-unidade-${u.id}">
+              <button onclick="abrirEdicaoUnidade('${u.id}')">${ic('pencil', 14)} Editar</button>
+              <button onclick="excluirUnidade('${u.id}')" class="sup-dropdown-danger">${ic('trash', 14)} Excluir</button>
+            </div>
+          </div>
         </div>
+        <span class="sup-chevron-ind">${ic('chevronDown', 15)}</span>
       </div>
       <div id="udocs-wrap-${u.id}" style="display:none; padding:0 10px 16px 27px">
         <div id="udoc-form-${u.id}" class="card" style="display:none; margin-bottom:10px; background:var(--surface2)">
@@ -150,14 +156,16 @@ function renderUnidadesListaAd() {
             <label>Observação <span style="color:var(--text-muted); font-weight:400">(opcional)</span></label>
             <input type="text" id="udoc-obs-${u.id}" placeholder="opcional">
           </div>
-          <div class="form-group" style="margin-bottom:12px">
-            <label style="font-size:12px; font-weight:500; color:var(--text-sec)">Arquivo (PDF ou imagem — opcional)</label>
-            <div class="file-drop" onclick="document.getElementById('udoc-file-${u.id}').click()" style="padding:10px; cursor:pointer">
-              <input type="file" id="udoc-file-${u.id}" accept=".pdf,.png,.jpg,.jpeg" style="display:none" onchange="previewUnidadeDocFile('${u.id}', this)">
-              <p id="udoc-file-label-${u.id}" style="font-size:12px; color:var(--text-muted)">📎 Clique para selecionar arquivo</p>
+          <div style="display:flex; align-items:flex-end; gap:10px; margin-bottom:2px">
+            <div class="form-group" style="flex:1; margin-bottom:0">
+              <label style="font-size:12px; font-weight:500; color:var(--text-sec)">Arquivo (PDF ou imagem — opcional)</label>
+              <div class="file-drop" onclick="document.getElementById('udoc-file-${u.id}').click()" style="padding:10px; cursor:pointer">
+                <input type="file" id="udoc-file-${u.id}" accept=".pdf,.png,.jpg,.jpeg" style="display:none" onchange="previewUnidadeDocFile('${u.id}', this)">
+                <p id="udoc-file-label-${u.id}" style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px; margin:0">${ic('paperclip', 13)} Clique para selecionar arquivo</p>
+              </div>
             </div>
+            <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="addUnidadeDocumento('${u.id}')">Adicionar documento</button>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="addUnidadeDocumento('${u.id}')">Adicionar documento</button>
         </div>
         <div id="udocs-lista-${u.id}"></div>
       </div>
@@ -165,6 +173,24 @@ function renderUnidadesListaAd() {
   }).join('');
 
   lista.forEach(u => renderUnidadeDocsLista(u.id));
+}
+
+function toggleMenuUnidade(id, event) {
+  event.stopPropagation();
+  const menu = document.getElementById('menu-unidade-' + id);
+  if (!menu) return;
+  const jaAberto = menu.classList.contains('open');
+  document.querySelectorAll('.sup-dropdown.open').forEach(m => m.classList.remove('open'));
+  if (jaAberto) return;
+  menu.classList.add('open');
+  setTimeout(() => {
+    document.addEventListener('click', function fechar(e) {
+      if (!menu.contains(e.target)) {
+        menu.classList.remove('open');
+        document.removeEventListener('click', fechar);
+      }
+    });
+  }, 0);
 }
 
 function toggleUnidadeDocsList(id) {
@@ -195,7 +221,7 @@ function toggleUnidadeDocsForm(id) {
 function previewUnidadeDocFile(uid, input) {
   const label = document.getElementById('udoc-file-label-' + uid);
   if (input.files && input.files[0]) {
-    label.textContent = '📎 ' + input.files[0].name;
+    label.innerHTML = `${ic('paperclip', 13)} ${input.files[0].name}`;
     label.style.color = 'var(--accent)';
   }
 }
@@ -206,20 +232,43 @@ function renderUnidadeDocsLista(unidadeId) {
   if (!wrap) return;
   const docs = d.unidadesDocumentos.filter(doc => doc.unidadeId === unidadeId).sort((a,b) => new Date(a.validade) - new Date(b.validade));
   if (!docs.length) { wrap.innerHTML = '<p style="font-size:12px; color:var(--text-muted)">Nenhum documento arquivado.</p>'; return; }
-  wrap.innerHTML = `<table><thead><tr><th>Documento</th><th>Validade</th><th>Status</th><th>Observação</th><th>Arquivo</th><th></th></tr></thead><tbody>
-    ${docs.map(doc => {
-      const st = statusDocumento(doc);
-      const temArquivo = !!doc.caminhoStorage;
-      return `<tr>
-        <td style="font-weight:500">${doc.nome}</td>
-        <td style="color:var(--text-sec)">${new Date(doc.validade + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-        <td><span class="badge ${st.cls}">${st.label}</span></td>
-        <td style="color:var(--text-muted); font-size:12px">${doc.obs || '—'}</td>
-        <td>${temArquivo ? `<button class="btn btn-secondary btn-sm" onclick="abrirArquivoUnidadeDoc('${doc.id}')">📄 Abrir</button>` : '<span style="font-size:11px;color:var(--text-muted)">—</span>'}</td>
-        <td><div class="actions"><button class="btn btn-danger btn-sm" onclick="removeUnidadeDocumento('${doc.id}','${unidadeId}')">Excluir</button></div></td>
-      </tr>`;
-    }).join('')}
-  </tbody></table>`;
+
+  wrap.innerHTML = `
+    <div class="sup-doc-list-header">
+      <span>Documentação ativa</span>
+      <span class="sup-doc-count-badge">${pluralDocs(docs.length)}</span>
+    </div>
+    <div class="sup-doc-list">
+      ${docs.map(doc => {
+        const st = statusDocumento(doc);
+        const temArquivo = !!doc.caminhoStorage;
+        return `
+        <div class="sup-doc-card">
+          <div class="sup-doc-col sup-doc-col-nome">
+            <div class="sup-doc-label">Documento</div>
+            <div class="sup-doc-value strong">${doc.nome}</div>
+          </div>
+          <div class="sup-doc-col">
+            <div class="sup-doc-label">Validade</div>
+            <div class="sup-doc-value">${new Date(doc.validade + 'T00:00:00').toLocaleDateString('pt-BR')}</div>
+          </div>
+          <div class="sup-doc-col">
+            <div class="sup-doc-label">Status</div>
+            <span class="badge ${st.cls}">${st.label}</span>
+          </div>
+          <div class="sup-doc-col sup-doc-col-obs">
+            <div class="sup-doc-label">Observação</div>
+            <div class="sup-doc-value muted">${doc.obs || '—'}</div>
+          </div>
+          <div class="sup-doc-actions">
+            ${temArquivo
+              ? `<button class="sup-doc-btn-abrir" onclick="abrirArquivoUnidadeDoc('${doc.id}')">${ic('fileText', 13)} Abrir</button>`
+              : `<span class="sup-doc-sem-arquivo">—</span>`}
+            <button class="sup-doc-icon-btn sup-doc-icon-btn-danger" onclick="removeUnidadeDocumento('${doc.id}','${unidadeId}')" title="Excluir">${ic('trash', 14)}</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
 }
 
 async function abrirArquivoUnidadeDoc(docId) {
@@ -287,7 +336,7 @@ async function addUnidadeDocumento(unidadeId) {
   document.getElementById(`udoc-obs-${unidadeId}`).value = '';
   if (fileInput) fileInput.value = '';
   const label = document.getElementById('udoc-file-label-' + unidadeId);
-  if (label) { label.textContent = '📎 Clique para selecionar arquivo'; label.style.color = ''; }
+  if (label) { label.innerHTML = `${ic('paperclip', 13)} Clique para selecionar arquivo`; label.style.color = ''; }
 
   await carregarUnidadesDocumentos();
   renderUnidadeDocsLista(unidadeId);

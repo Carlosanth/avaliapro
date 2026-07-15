@@ -127,7 +127,7 @@ function gerarPDFDoc(fornecedor, periodo, layoutOverride) {
   const isCert = fornecedor.sit === 'certificado';
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: isCert ? 'landscape' : 'portrait' });
   const d = db();
-  const empNome = d.empresa.nome || 'Empresa';
+  const empNome = d.nomeEmpresa || 'Empresa';
   const tipoDoc = getTipoDoc(fornecedor.sit, fornecedor.tipo);
   const corpoTexto = aplicarTexto(d.textos[tipoDoc] || '', fornecedor.nome, fornecedor.media.toFixed(1), periodo, empNome);
   const W = doc.internal.pageSize.getWidth();
@@ -236,7 +236,7 @@ async function enviarCobrancaConsolidadaFornecedor(fornecedorId) {
   }).join('\n');
 
   const temVencido = pendentes.some(doc => doc.estado === 'vencido');
-  const empNome = d.empresa.nome || 'Empresa';
+  const empNome = d.nomeEmpresa || 'Empresa';
   const assunto = temVencido ? `Documentos pendentes — ${forn.nome}` : `Documentos vencendo em breve — ${forn.nome}`;
   const corpo = `Olá,\n\nSegue a situação dos documentos cadastrados referente à sua empresa:\n\n${linhas}\n\nSolicitamos o envio das versões atualizadas com a maior brevidade possível, para mantermos seu cadastro regularizado.${linkPortalTexto}\n\nAtenciosamente,\n${empNome}`;
 
@@ -264,7 +264,7 @@ function enviarCertificadoEmail(fornecedorId) {
   if (!r.email) { toast(`"${r.nome}" não tem e-mail cadastrado. Adicione em Fornecedores › Editar.`); return; }
   baixarPDFIndividual(fornecedorId);
   const d = db();
-  const empNome = d.empresa.nome || 'Empresa';
+  const empNome = d.nomeEmpresa || 'Empresa';
   const titulo = getTituloDoc(r.sit);
   const assunto = `${titulo} — ${r.nome} (${_ultimoPeriodoAd})`;
   const corpo = `Olá,\n\nSegue referente à avaliação de fornecedores do período ${_ultimoPeriodoAd}: ${titulo.toLowerCase()}.\n\nO arquivo PDF foi baixado automaticamente nesta página (${nomeArquivoDoc(r)}) — por favor, anexe-o a este e-mail antes de enviar.\n\nAtenciosamente,\n${empNome}`;
@@ -322,7 +322,7 @@ function notificarFornecedorNota(avId) {
   const [ano, mes] = av.periodo.split('-');
   const periodoLabel = `${MESES[parseInt(mes)]}/${ano}`;
   const sit = getSituacao(av.nota);
-  const empNome = d.empresa.nome || 'Empresa';
+  const empNome = d.nomeEmpresa || 'Empresa';
   const saudacao = saudacaoPorHorario();
 
   const blocosCriterios = [];
@@ -374,7 +374,7 @@ async function enviarCobrancaDocumento(docId) {
 
   const diasReais = diasParaVencer(doc.validade); // negativo = já venceu, positivo = ainda vai vencer
   const dataFmt = new Date(doc.validade + 'T00:00:00').toLocaleDateString('pt-BR');
-  const empNome = d.empresa.nome || 'Empresa';
+  const empNome = d.nomeEmpresa || 'Empresa';
   const jaVencido = diasReais < 0;
 
   // Gera (ou renova) o link do portal na hora, pra já ir junto no e-mail.

@@ -308,7 +308,7 @@ function renderAdConfig() {
     <div id="config-tab-empresa" class="config-tab-ad" style="display:none">
       <div class="card">
         <div class="form-row">
-          <div class="form-group"><label>Nome da empresa</label><input type="text" id="emp-nome" value="${d.empresa.nome||''}"></div>
+          <div class="form-group"><label>Nome da empresa</label><input type="text" id="emp-nome" value="${d.nomeEmpresa || d.empresa.nome || ''}"></div>
           <div class="form-group"><label>Cidade/UF</label><input type="text" id="emp-cidade" value="${d.empresa.cidade||''}"></div>
         </div>
         <div class="form-row">
@@ -422,6 +422,14 @@ async function salvarEmpresaAd() {
   });
   const { error } = await salvarConfigEmpresa('empresa', empresa);
   if (error) { toast('Erro ao salvar dados da empresa: ' + error.message); return; }
+
+  // "nome" também vive numa coluna própria (é o que aparece no menu lateral,
+  // em Meus Documentos e nos e-mails) — mantém as duas fontes sincronizadas.
+  if (empresa.nome) {
+    const { error: nomeErr } = await supabaseClient.from('empresas').update({ nome: empresa.nome }).eq('id', currentUser.empresaId);
+    if (!nomeErr) empresaConfigCache.nome = empresa.nome;
+  }
+
   addLog('empresa_atualizada', `${currentUser.email} atualizou os dados da empresa`);
   toast('Dados da empresa salvos!');
 }
