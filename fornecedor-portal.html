@@ -14,19 +14,23 @@
     --success: #16a34a; --success-bg: #f0fdf4;
     --warn: #d97706; --warn-bg: #fffbeb;
   }
+  html { scroll-padding-top: 60px; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg); color: var(--text); min-height: 100vh;
+    padding-top: 58px;
   }
   .top-brand {
-    background: var(--navy); color: #fff; padding: 14px 20px;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+    height: 58px; background: var(--navy); color: #fff; padding: 0 20px;
     display: flex; align-items: center; gap: 10px;
   }
   .top-brand-seal { width: 26px; height: 26px; flex-shrink: 0; }
   .top-brand-text b { font-size: 14px; display: block; }
   .top-brand-text span { font-size: 11px; color: rgba(229,226,221,0.7); }
 
-  .wrap { max-width: 620px; margin: 0 auto; padding: 32px 20px 20px; }
+  .wrap { max-width: 800px; margin: 0 auto; padding: 32px 20px 20px; }
+  .docs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
 
   /* ---------- Cabeçalho ---------- */
   .head-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
@@ -43,13 +47,13 @@
   .head-empresa-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
 
   /* ---------- Card do documento ---------- */
-  .doc-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 18px; }
+  .doc-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
   .doc-alert { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 22px; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
   .doc-alert.alert-danger { background: var(--danger-bg); color: var(--danger); }
   .doc-alert.alert-warn { background: var(--warn-bg); color: var(--warn); }
   .doc-alert.alert-pendente { background: var(--surface2); color: var(--text-muted); }
   .doc-id { font-weight: 600; opacity: .7; letter-spacing: .02em; flex-shrink: 0; }
-  .doc-card-body { padding: 22px 24px 24px; }
+  .doc-card-body { padding: 22px 24px 24px; display: flex; flex-direction: column; flex: 1; }
   .doc-title { font-size: 17px; font-weight: 700; color: var(--navy); margin-bottom: 5px; }
   .doc-desc { font-size: 12.5px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
 
@@ -63,7 +67,7 @@
   .dropzone-label { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
   .dropzone {
     border: 1.5px dashed var(--border); border-radius: 10px;
-    padding: 28px 16px; text-align: center; cursor: pointer;
+    padding: 16px 16px; text-align: center; cursor: pointer;
     transition: all .15s ease; background: var(--surface2); margin-bottom: 20px;
   }
   .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: var(--accent-bg); }
@@ -78,7 +82,7 @@
     width: 100%; padding: 13px 18px; border: none; border-radius: 9px;
     background: var(--navy); color: #fff; font-size: 14px; font-weight: 700;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
-    gap: 8px; transition: background .15s ease; font-family: inherit;
+    gap: 8px; transition: background .15s ease; font-family: inherit; margin-top: auto;
   }
   .btn-submit:hover:not(:disabled) { background: var(--accent); }
   .btn-submit:disabled { opacity: .55; cursor: not-allowed; }
@@ -93,7 +97,23 @@
 
   .empty, .erro, .loading { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 13px; }
   .erro { color: var(--danger); }
-  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; display: none; z-index: 999; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; display: none; z-index: 999; max-width: 90vw; text-align: center; }
+
+  /* ---------- Responsivo (celular) ---------- */
+  @media (max-width: 640px) {
+    .wrap { padding: 22px 14px 14px; }
+    .head-top { flex-wrap: wrap; gap: 10px; }
+    .head-timer { padding-top: 0; }
+    .head-title { font-size: 20px; }
+    .doc-card-body { padding: 18px 16px 20px; }
+    .doc-alert { padding: 9px 16px; flex-wrap: wrap; gap: 4px 10px; }
+  }
+
+  @media (max-width: 420px) {
+    .doc-fields { flex-direction: column; gap: 12px; }
+    .top-brand-text span { display: none; }
+    .docs-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -240,7 +260,7 @@ function renderDocumentos(documentos, pendentesIds) {
     return;
   }
 
-  wrap.innerHTML = documentos.map(doc => {
+  wrap.innerHTML = '<div class="docs-grid">' + documentos.map(doc => {
     const pendente = pendentesIds.includes(doc.id);
     const alerta = alertaInfo(doc, pendente);
     const dataAtualFormatada = new Date(doc.validade + 'T00:00:00').toLocaleDateString('pt-BR');
@@ -282,7 +302,7 @@ function renderDocumentos(documentos, pendentesIds) {
           `}
         </div>
       </div>`;
-  }).join('');
+  }).join('') + '</div>';
 
   documentos.forEach(doc => {
     if (!pendentesIds.includes(doc.id)) wireDropzone(doc.id);
