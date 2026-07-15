@@ -433,7 +433,7 @@ function renderFornecedoresListaAd() {
         </div>
         <div class="sup-actions" onclick="event.stopPropagation()">
           ${aba !== 'desativados' ? `
-            <button class="sup-btn sup-btn-strong" onclick="enviarCobrancaConsolidadaFornecedor('${f.id}')">Cobrar Pendências</button>
+            ${(piorStatus === 'vencido' || piorStatus === 'proximo') ? `<button class="sup-btn sup-btn-strong" onclick="enviarCobrancaConsolidadaFornecedor('${f.id}')">Cobrar Pendências</button>` : ''}
             <button class="sup-btn-solid" onclick="toggleFornecedorDocsForm('${f.id}')">Novo Documento</button>
             <div class="sup-dropdown-wrap">
               <button class="sup-more-btn" onclick="toggleMenuFornecedor('${f.id}', event)" title="Mais opções">${ic('moreVertical', 17)}</button>
