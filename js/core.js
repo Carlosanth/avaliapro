@@ -87,6 +87,7 @@ function db() {
     cobrancaAutomaticaFrequencia: empresaConfigCache.cobranca_automatica_frequencia,
     lembreteAvaliadorAtivo: empresaConfigCache.lembrete_avaliador_ativo,
     lembreteAvaliadorFrequencia: empresaConfigCache.lembrete_avaliador_frequencia,
+    notificarAtividadeAtivo: empresaConfigCache.notificar_atividade_ativo,
   };
 }
 

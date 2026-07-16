@@ -159,30 +159,66 @@ function renderAdConfig() {
 
   // ---- só admin_master vê valores/cancela; admin comum vê tudo mascarado (***) ----
   const isAdminMaster = currentUser.papel === 'admin_master';
+  // só considera "plano assinado" quando realmente ativa — trial não conta, mesmo já tendo um plano escolhido
+  const planoAtivo = (statusAtual === 'ativa') ? d.plano : null;
 
-  function upgradeCardHtml(planoKey, nome, preco, recomendado) {
-    const assinado = d.plano === planoKey && statusAtual === 'ativa';
-    const precoTexto = isAdminMaster ? `R$ ${preco}` : '***';
-    const botao = assinado
-      ? `<button class="btn btn-secondary btn-block" disabled style="display:flex; align-items:center; justify-content:center; gap:6px; opacity:.7; cursor:default">
-           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-           Assinado
-         </button>`
-      : (isAdminMaster
-          ? `<button class="btn ${recomendado ? 'btn-primary' : 'btn-secondary'} btn-block" onclick="assinarPlano('${planoKey}')">Assinar ${nome}</button>`
-          : `<button class="btn ${recomendado ? 'btn-primary' : 'btn-secondary'} btn-block" disabled style="opacity:.5; cursor:not-allowed" title="Só o Admin+ pode gerenciar a assinatura">Assinar ${nome}</button>`);
+  const PLANOS_INFO = {
+    essencial: { nome: 'Essencial', preco: 149, recomendado: false },
+    profissional: { nome: 'Profissional', preco: 349, recomendado: true },
+  };
+
+  function precoTextoPlano(preco) {
+    return isAdminMaster ? `R$ ${preco}` : '***';
+  }
+
+  // Card de um plano ainda não assinado — botão "Assinar"
+  function cardAssinarHtml(planoKey) {
+    const { nome, preco, recomendado } = PLANOS_INFO[planoKey];
+    const botao = isAdminMaster
+      ? `<button class="btn ${recomendado ? 'btn-primary' : 'btn-secondary'} btn-block" onclick="assinarPlano('${planoKey}')">Assinar ${nome}</button>`
+      : `<button class="btn ${recomendado ? 'btn-primary' : 'btn-secondary'} btn-block" disabled style="opacity:.5; cursor:not-allowed" title="Só o Admin+ pode gerenciar a assinatura">Assinar ${nome}</button>`;
     return `
       <div class="upgrade-card${recomendado ? ' recommended' : ''}">
         ${recomendado ? '<span class="upgrade-card-tag">Recomendado</span>' : ''}
         <div style="font-weight:700; margin-bottom:4px">${nome}</div>
-        <div style="font-size:19px; font-weight:700; color:var(--accent); margin-bottom:10px">${precoTexto}<span style="font-size:11.5px; font-weight:400; color:var(--text-muted)">/mês</span></div>
+        <div style="font-size:19px; font-weight:700; color:var(--accent); margin-bottom:10px">${precoTextoPlano(preco)}<span style="font-size:11.5px; font-weight:400; color:var(--text-muted)">/mês</span></div>
         ${botao}
       </div>`;
   }
 
-  const cancelarAssinaturaHtml = (isAdminMaster && statusAtual === 'ativa')
-    ? `<button class="btn btn-danger btn-sm" style="margin-top:14px" onclick="abrirCancelarAssinatura()">Cancelar assinatura</button>`
-    : '';
+  // Card do plano já assinado — no lugar de "Assinar" fica "Cancelar assinatura",
+  // e um link secundário pra revelar o outro plano (migrar em vez de cancelar).
+  function cardAssinadoHtml(planoKey) {
+    const { nome, preco, recomendado } = PLANOS_INFO[planoKey];
+    const acoes = isAdminMaster
+      ? `<button class="btn btn-danger btn-block" onclick="abrirCancelarAssinatura()">Cancelar assinatura</button>
+         <button type="button" class="btn-link-toggle" onclick="toggleOutroPlanoCard()">Trocar de plano</button>`
+      : `<button class="btn btn-secondary btn-block" disabled style="display:flex; align-items:center; justify-content:center; gap:6px; opacity:.7; cursor:default">
+           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+           Assinado
+         </button>`;
+    return `
+      <div class="upgrade-card${recomendado ? ' recommended' : ''}">
+        ${recomendado ? '<span class="upgrade-card-tag">Recomendado</span>' : ''}
+        <div style="font-weight:700; margin-bottom:4px">${nome}</div>
+        <div style="font-size:19px; font-weight:700; color:var(--accent); margin-bottom:10px">${precoTextoPlano(preco)}<span style="font-size:11.5px; font-weight:400; color:var(--text-muted)">/mês</span></div>
+        ${acoes}
+      </div>`;
+  }
+
+  let upgradeCardsHtml;
+  if (planoAtivo && PLANOS_INFO[planoAtivo]) {
+    const planoOutro = planoAtivo === 'essencial' ? 'profissional' : 'essencial';
+    upgradeCardsHtml = `
+      <div class="upgrade-cards single">${cardAssinadoHtml(planoAtivo)}</div>
+      <div class="upgrade-cards single" id="outro-plano-card" style="display:none; margin-top:12px">${cardAssinarHtml(planoOutro)}</div>`;
+  } else {
+    upgradeCardsHtml = `
+      <div class="upgrade-cards">
+        ${cardAssinarHtml('essencial')}
+        ${cardAssinarHtml('profissional')}
+      </div>`;
+  }
 
   document.getElementById('ad-page-config').innerHTML = `
     <div class="page-header"><div><h2>Configurações</h2><p>Matriz de qualificação, layout dos documentos e dados da empresa</p></div></div>
@@ -418,6 +454,24 @@ function renderAdConfig() {
 
         <button class="btn btn-primary" onclick="salvarConfigLembreteAvaliador()">Salvar</button>
       </div>
+
+      <div class="card">
+        <div class="card-title">Receber notificações de atualizações por e-mail</div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px">Quando ligado, os admins marcados como "recebe notificação" (em Usuários e acessos) recebem um e-mail na hora — sem esperar cron — assim que um fornecedor envia um documento pra aprovação, ou assim que um avaliador conclui uma avaliação de serviço.</p>
+
+        <div class="toggle-row">
+          <div class="toggle-row-body">
+            <div class="toggle-row-title">Ativar notificações de atualizações por e-mail</div>
+            <div class="toggle-row-sub">Documento enviado pelo fornecedor ou avaliação concluída avisam os admins marcados na hora.</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="cfg-notif-atividade-ativo" ${d.notificarAtividadeAtivo ? 'checked' : ''}>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <button class="btn btn-primary" onclick="salvarConfigNotificacaoAtividade()">Salvar</button>
+      </div>
     </div>
 
     <div id="config-tab-empresa" class="config-tab-ad" style="display:none">
@@ -459,12 +513,8 @@ function renderAdConfig() {
           ${usageRowHtml(iconFornecedores, 'Fornecedores cadastrados', totalFornecedores, d.limiteFornecedores)}
           ${usageRowHtml(iconAdmins, 'Admins ativos', totalAdmins, d.limiteAdmins)}
 
-          <div class="upgrade-cards">
-            ${upgradeCardHtml('essencial', 'Essencial', 149, false)}
-            ${upgradeCardHtml('profissional', 'Profissional', 349, true)}
-          </div>
-          <p style="font-size:11px; color:var(--text-muted); margin-top:14px">Enterprise é negociado diretamente — fale com a gente.</p>
-          ${cancelarAssinaturaHtml}
+          ${upgradeCardsHtml}
+          <p style="font-size:11px; color:var(--text-muted); margin-top:14px">Enterprise é negociado diretamente — fale com a gente em <a href="mailto:contato@homologpro.com.br" style="color:var(--accent)">contato@homologpro.com.br</a>.</p>
         </div>
 
       </div>
@@ -521,6 +571,13 @@ async function assinarPlano(plano) {
   if (!data.url) { toast('Checkout ainda não configurado no servidor.'); return; }
 
   window.location.href = data.url;
+}
+
+// Mostra/esconde o card do outro plano (pra migrar em vez de cancelar de vez)
+function toggleOutroPlanoCard() {
+  const el = document.getElementById('outro-plano-card');
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? '' : 'none';
 }
 
 // Só admin_master chama isso (o botão nem aparece pra admin comum, e o
@@ -581,6 +638,20 @@ async function salvarConfigLembreteAvaliador() {
   empresaConfigCache.lembrete_avaliador_ativo = ativo;
   empresaConfigCache.lembrete_avaliador_frequencia = frequencia;
   addLog('config_lembrete_avaliador', `${currentUser.email} ${ativo ? 'ativou' : 'desativou'} o lembrete automático dos avaliadores (frequência: ${frequencia})`);
+  toast('Configuração salva!');
+}
+
+async function salvarConfigNotificacaoAtividade() {
+  const ativo = document.getElementById('cfg-notif-atividade-ativo').checked;
+
+  const { error } = await supabaseClient.from('empresas').update({
+    notificar_atividade_ativo: ativo,
+  }).eq('id', currentUser.empresaId);
+
+  if (error) { toast('Erro ao salvar: ' + error.message); return; }
+
+  empresaConfigCache.notificar_atividade_ativo = ativo;
+  addLog('config_notificacao_atividade', `${currentUser.email} ${ativo ? 'ativou' : 'desativou'} a notificação de atualizações por e-mail`);
   toast('Configuração salva!');
 }
 // Helper compartilhado: mescla uma chave dentro de empresas.config (jsonb)
