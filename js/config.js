@@ -117,37 +117,134 @@ function resolveVariavelValor(chave, ctx) {
 
 function renderAdConfig() {
   const d = db();
+
+  // ---- dados da assinatura (usados no card "Assinatura" dentro de Minha empresa) ----
+  const STATUS_LABELS = { trial: 'Trial', ativa: 'Ativa', expirada: 'Expirada', cancelada: 'Cancelada' };
+  const STATUS_BADGE_CLASS = { trial: 'trial', ativa: 'ativo', expirada: 'expirado', cancelada: 'cancelado' };
+  const PLANO_LABELS = { essencial: 'Essencial', profissional: 'Profissional', enterprise: 'Enterprise' };
+  const statusAtual = d.statusEmpresa || 'ativa';
+  const planoLabel = d.plano ? (PLANO_LABELS[d.plano] || d.plano) : null;
+  const badgeTexto = planoLabel ? `${planoLabel} · ${STATUS_LABELS[statusAtual] || statusAtual}` : (STATUS_LABELS[statusAtual] || statusAtual);
+  const badgeClasse = STATUS_BADGE_CLASS[statusAtual] || 'ativo';
+
+  let trialBannerHtml = '';
+  if (statusAtual === 'trial' && d.trialTerminaEm) {
+    const hoje0h = new Date(); hoje0h.setHours(0, 0, 0, 0);
+    const fimTrial0h = new Date(d.trialTerminaEm); fimTrial0h.setHours(0, 0, 0, 0);
+    const diasRestantes = Math.round((fimTrial0h - hoje0h) / 86400000);
+    trialBannerHtml = `<div class="trial-banner-inline">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      ${diasRestantes > 0 ? `Faltam ${diasRestantes} dia${diasRestantes > 1 ? 's' : ''} pro fim do teste grátis` : 'Seu teste grátis acabou'}
+    </div>`;
+  }
+
+  const totalFornecedores = d.fornecedores.length;
+  const totalAdmins = d.usuarios.filter(u => (u.papel === 'admin' || u.papel === 'admin_master') && u.ativo).length;
+
+  function usageRowHtml(iconSvg, label, atual, limite) {
+    const pct = limite ? Math.min(100, Math.round(atual / limite * 100)) : 0;
+    return `
+      <div class="usage-row">
+        <div class="usage-row-icon">${iconSvg}</div>
+        <div class="usage-row-body">
+          <div class="usage-row-label">${label}</div>
+          ${limite !== null ? `<div class="usage-bar"><div class="usage-bar-fill" style="width:${pct}%"></div></div>` : ''}
+        </div>
+        <div class="usage-row-value">${atual}${limite !== null ? ' / ' + limite : ' · sem limite'}</div>
+      </div>`;
+  }
+
+  const iconFornecedores = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
+  const iconAdmins = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>';
+
   document.getElementById('ad-page-config').innerHTML = `
     <div class="page-header"><div><h2>Configurações</h2><p>Matriz de qualificação, layout dos documentos e dados da empresa</p></div></div>
 
-    <div class="tab-bar">
-      <button class="tab active" onclick="showConfigTabAd('matriz', this)">Matriz de qualificação</button>
-      <button class="tab" onclick="showConfigTabAd('layout', this)">Layout e textos dos documentos</button>
-      <button class="tab" onclick="showConfigTabAd('camposfor', this)">Campos do fornecedor</button>
-      <button class="tab" onclick="showConfigTabAd('tiposdoc', this)">Tipos de documento</button>
-      <button class="tab" onclick="showConfigTabAd('cobranca', this)">Cobrança automática</button>
-      <button class="tab" onclick="showConfigTabAd('assinatura', this)">Assinatura</button>
-      <button class="tab" onclick="showConfigTabAd('empresa', this)">Minha empresa</button>
-      <button class="tab" onclick="showConfigTabAd('retencao', this)">Retenção de dados</button>
+    <div class="config-tab-bar">
+      <button class="config-tab-btn active" onclick="showConfigTabAd('matriz', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 17H5"/><path d="M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+        Matriz de qualificação
+      </button>
+      <button class="config-tab-btn" onclick="showConfigTabAd('layout', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="7" x="3" y="3" rx="1"/><rect width="9" height="7" x="3" y="14" rx="1"/><rect width="5" height="7" x="16" y="14" rx="1"/></svg>
+        Layout e textos
+      </button>
+      <button class="config-tab-btn" onclick="showConfigTabAd('camposfor', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>
+        Campos do fornecedor
+      </button>
+      <button class="config-tab-btn" onclick="showConfigTabAd('tiposdoc', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+        Tipos de documento
+      </button>
+      <button class="config-tab-btn" onclick="showConfigTabAd('cobranca', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+        Cobrança automática
+      </button>
+      <button class="config-tab-btn" onclick="showConfigTabAd('empresa', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg>
+        Minha empresa
+      </button>
+      <button class="config-tab-btn" onclick="showConfigTabAd('retencao', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+        Retenção de dados
+      </button>
     </div>
 
     <div id="config-tab-matriz" class="config-tab-ad">
       <div class="card">
         <div class="card-title">Faixas de pontuação</div>
-        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px">
-          <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--surface2); border-radius:8px">
-            <label style="font-size:12px; font-weight:500; min-width:220px">🏆 Certificado (nota exata mínima)</label>
-            <input type="number" id="corte-cert" step="0.1" value="${d.matriz.cert}" style="width:80px; padding:5px 8px">
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px">Cada faixa exige que a nota atenda ou supere o valor mínimo definido.</p>
+        <div class="matrix-rows">
+          <div class="matrix-row">
+            <div class="status-icon amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg>
+            </div>
+            <div class="matrix-row-body">
+              <div class="matrix-row-title">Certificado</div>
+              <div class="matrix-row-sub">Nota exata mínima</div>
+            </div>
+            <div class="matrix-row-input">
+              <input type="number" id="corte-cert" step="0.1" value="${d.matriz.cert}">
+              <span>/ 10</span>
+            </div>
           </div>
-          <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--surface2); border-radius:8px">
-            <label style="font-size:12px; font-weight:500; min-width:220px">✅ Aprovado (nota mínima)</label>
-            <input type="number" id="corte-aprov" step="0.1" value="${d.matriz.aprov}" style="width:80px; padding:5px 8px">
+          <div class="matrix-row">
+            <div class="status-icon green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            </div>
+            <div class="matrix-row-body">
+              <div class="matrix-row-title">Aprovado</div>
+              <div class="matrix-row-sub">Nota mínima</div>
+            </div>
+            <div class="matrix-row-input">
+              <input type="number" id="corte-aprov" step="0.1" value="${d.matriz.aprov}">
+              <span>/ 10</span>
+            </div>
           </div>
-          <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--surface2); border-radius:8px">
-            <label style="font-size:12px; font-weight:500; min-width:220px">⚠️ Parcialmente aprovado (nota mínima)</label>
-            <input type="number" id="corte-parcial" step="0.1" value="${d.matriz.parcial}" style="width:80px; padding:5px 8px">
+          <div class="matrix-row">
+            <div class="status-icon amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            </div>
+            <div class="matrix-row-body">
+              <div class="matrix-row-title">Parcialmente aprovado</div>
+              <div class="matrix-row-sub">Nota mínima</div>
+            </div>
+            <div class="matrix-row-input">
+              <input type="number" id="corte-parcial" step="0.1" value="${d.matriz.parcial}">
+              <span>/ 10</span>
+            </div>
           </div>
-          <div style="padding:10px 14px; font-size:12px; color:var(--text-muted)">❌ Reprovado: abaixo do parcialmente aprovado — exige indicação obrigatória de melhoria esperada pelo avaliador.</div>
+          <div class="matrix-row">
+            <div class="status-icon rose">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            </div>
+            <div class="matrix-row-body">
+              <div class="matrix-row-title">Reprovado</div>
+              <div class="matrix-row-sub">Abaixo do parcialmente aprovado — exige indicação obrigatória de melhoria pelo avaliador.</div>
+            </div>
+            <span class="badge-auto">Automático</span>
+          </div>
         </div>
         <button class="btn btn-primary" onclick="salvarMatriz()">Salvar matriz</button>
       </div>
@@ -201,25 +298,30 @@ function renderAdConfig() {
 
     <div id="config-tab-camposfor" class="config-tab-ad" style="display:none">
       <div class="card">
-        <div class="card-title">Campos personalizados do fornecedor</div>
-        <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px">Além de nome, tipo, setor, e-mail, CNPJ e criticidade, você pode adicionar outros campos (ex: contrato, contato responsável, categoria). Eles aparecem automaticamente no cadastro de fornecedores.</p>
-        <div id="campos-fornecedor-lista" style="margin-bottom:16px"></div>
-        <div class="form-row three">
-          <div class="form-group"><label>Chave (sem espaço/acento)</label><input type="text" id="ncf-chave" placeholder="ex: categoria"></div>
-          <div class="form-group"><label>Rótulo (exibido)</label><input type="text" id="ncf-label" placeholder="ex: Categoria"></div>
-          <div class="form-group"><label>Tipo de campo</label>
-            <select id="ncf-tipo" onchange="document.getElementById('ncf-opcoes-wrap').style.display = this.value === 'select' ? 'flex' : 'none'">
-              <option value="texto">Texto</option>
-              <option value="select">Lista (opções)</option>
-              <option value="data">Data</option>
-            </select>
+        <div class="card-title">Campos do fornecedor</div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px">Além de nome, tipo, setor, e-mail, CNPJ e criticidade, adicione campos personalizados que aparecem automaticamente no cadastro.</p>
+
+        <div class="subcard">
+          <div class="subcard-title">Novo campo personalizado</div>
+          <div id="campos-fornecedor-lista"></div>
+          <div class="subcard-divider"></div>
+          <div class="form-row three">
+            <div class="form-group"><label>Chave (sem espaço/acento)</label><input type="text" id="ncf-chave" placeholder="ex: categoria"></div>
+            <div class="form-group"><label>Rótulo (exibido)</label><input type="text" id="ncf-label" placeholder="ex: Categoria"></div>
+            <div class="form-group"><label>Tipo de campo</label>
+              <select id="ncf-tipo" onchange="document.getElementById('ncf-opcoes-wrap').style.display = this.value === 'select' ? 'flex' : 'none'">
+                <option value="texto">Texto</option>
+                <option value="select">Lista (opções)</option>
+                <option value="data">Data</option>
+              </select>
+            </div>
           </div>
+          <div class="form-group" id="ncf-opcoes-wrap" style="display:none; margin-bottom:14px">
+            <label>Opções (separadas por vírgula)</label>
+            <input type="text" id="ncf-opcoes" placeholder="ex: Nacional, Importado, Local">
+          </div>
+          <button class="btn btn-primary" onclick="addCampoFornecedorCustom()">+ Adicionar campo</button>
         </div>
-        <div class="form-group" id="ncf-opcoes-wrap" style="display:none; margin-bottom:14px">
-          <label>Opções (separadas por vírgula)</label>
-          <input type="text" id="ncf-opcoes" placeholder="ex: Nacional, Importado, Local">
-        </div>
-        <button class="btn btn-primary" onclick="addCampoFornecedorCustom()">Adicionar campo</button>
       </div>
     </div>
 
@@ -240,9 +342,15 @@ function renderAdConfig() {
         <div class="card-title">Cobrança automática de documentos</div>
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px">Quando ligado, o sistema manda sozinho o e-mail de "documento vencendo/vencido" pro fornecedor, sem você precisar clicar em nada. Só vale pra documentos de <b>Fornecedores</b> com e-mail cadastrado (não se aplica a Meus Documentos, que não tem destinatário).</p>
 
-        <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--surface2); border-radius:8px; margin-bottom:16px">
-          <input type="checkbox" id="cfg-cobranca-ativa" ${d.cobrancaAutomaticaAtiva ? 'checked' : ''} style="width:16px; height:16px">
-          <label for="cfg-cobranca-ativa" style="font-size:13px; font-weight:500; cursor:pointer">Ativar cobrança automática por e-mail</label>
+        <div class="toggle-row">
+          <div class="toggle-row-body">
+            <div class="toggle-row-title">Ativar cobrança automática por e-mail</div>
+            <div class="toggle-row-sub">Aviso enviado ao fornecedor com e-mail cadastrado quando um documento estiver perto de vencer.</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="cfg-cobranca-ativa" ${d.cobrancaAutomaticaAtiva ? 'checked' : ''}>
+            <span class="switch-slider"></span>
+          </label>
         </div>
 
         <div class="form-group" style="max-width:360px; margin-bottom:16px">
@@ -254,8 +362,6 @@ function renderAdConfig() {
           </select>
         </div>
 
-        <p style="font-size:11px; color:var(--text-muted); margin-bottom:16px">⚠️ Isso ainda depende de configurar um provedor de e-mail (Resend) do lado do servidor — enquanto isso não estiver pronto, ativar aqui não tem efeito nenhum (o sistema simplesmente não vai ter como enviar).</p>
-
         <button class="btn btn-primary" onclick="salvarConfigCobrancaAutomatica()">Salvar</button>
       </div>
 
@@ -263,9 +369,15 @@ function renderAdConfig() {
         <div class="card-title">Lembrete automático pros avaliadores</div>
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px">Manda e-mail sozinho pro avaliador quando ele tem avaliação pendente/atrasada, com o link de acesso. Independente disso, você sempre pode disparar manualmente em Usuários e acessos → "Enviar lembrete pra todos os pendentes".</p>
 
-        <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--surface2); border-radius:8px; margin-bottom:16px">
-          <input type="checkbox" id="cfg-lembrete-ativo" ${d.lembreteAvaliadorAtivo ? 'checked' : ''} style="width:16px; height:16px">
-          <label for="cfg-lembrete-ativo" style="font-size:13px; font-weight:500; cursor:pointer">Ativar lembrete automático pros avaliadores</label>
+        <div class="toggle-row">
+          <div class="toggle-row-body">
+            <div class="toggle-row-title">Ativar lembrete automático pros avaliadores</div>
+            <div class="toggle-row-sub">Manda e-mail ao avaliador com o link de acesso quando ele tem avaliação pendente ou atrasada.</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="cfg-lembrete-ativo" ${d.lembreteAvaliadorAtivo ? 'checked' : ''}>
+            <span class="switch-slider"></span>
+          </label>
         </div>
 
         <div class="form-group" style="max-width:360px; margin-bottom:16px">
@@ -281,45 +393,61 @@ function renderAdConfig() {
       </div>
     </div>
 
-    <div id="config-tab-assinatura" class="config-tab-ad" style="display:none">
-      <div class="card">
-        <div class="card-title">Assinatura</div>
-        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px">
-          Plano atual: <b>${d.empresa.plano ? (d.empresa.plano.charAt(0).toUpperCase() + d.empresa.plano.slice(1)) : '—'}</b>
-          &nbsp;·&nbsp; Status: <b>${d.statusEmpresa || '—'}</b>
-        </p>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px">
-          <div style="border:1px solid var(--border); border-radius:10px; padding:16px">
-            <div style="font-weight:700; margin-bottom:4px">Essencial</div>
-            <div style="font-size:20px; font-weight:700; color:var(--accent); margin-bottom:10px">R$ 149<span style="font-size:12px; font-weight:400; color:var(--text-muted)">/mês</span></div>
-            <button class="btn btn-primary btn-block" onclick="assinarPlano('essencial')">Assinar Essencial</button>
-          </div>
-          <div style="border:1px solid var(--border); border-radius:10px; padding:16px">
-            <div style="font-weight:700; margin-bottom:4px">Profissional</div>
-            <div style="font-size:20px; font-weight:700; color:var(--accent); margin-bottom:10px">R$ 349<span style="font-size:12px; font-weight:400; color:var(--text-muted)">/mês</span></div>
-            <button class="btn btn-primary btn-block" onclick="assinarPlano('profissional')">Assinar Profissional</button>
-          </div>
-        </div>
-        <p style="font-size:11px; color:var(--text-muted)">Enterprise continua sendo negociado diretamente — fale com a gente.</p>
-        <p style="font-size:11px; color:var(--text-muted); margin-top:8px">⚠️ Enquanto o Stripe não estiver configurado no servidor, clicar aqui não tem efeito.</p>
-      </div>
-    </div>
-
     <div id="config-tab-empresa" class="config-tab-ad" style="display:none">
-      <div class="card">
-        <div class="form-row">
-          <div class="form-group"><label>Nome da empresa</label><input type="text" id="emp-nome" value="${d.nomeEmpresa || d.empresa.nome || ''}"></div>
-          <div class="form-group"><label>Cidade/UF</label><input type="text" id="emp-cidade" value="${d.empresa.cidade||''}"></div>
+      <div class="account-cards">
+
+        <div class="card" style="margin-bottom:0">
+          <div class="card-title">
+            <span class="card-title-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg>
+              Dados cadastrais
+            </span>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Nome da empresa</label><input type="text" id="emp-nome" value="${d.nomeEmpresa || d.empresa.nome || ''}"></div>
+            <div class="form-group"><label>Cidade/UF</label><input type="text" id="emp-cidade" value="${d.empresa.cidade||''}"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Endereço</label><input type="text" id="emp-endereco" value="${d.empresa.endereco||''}"></div>
+            <div class="form-group"><label>CEP</label><input type="text" id="emp-cep" value="${d.empresa.cep||''}"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Telefone</label><input type="text" id="emp-tel" value="${d.empresa.tel||''}"></div>
+            <div class="form-group"><label>E-mail</label><input type="text" id="emp-email" value="${d.empresa.email||''}"></div>
+          </div>
+          <button class="btn btn-primary" onclick="salvarEmpresaAd()">Salvar dados</button>
         </div>
-        <div class="form-row">
-          <div class="form-group"><label>Endereço</label><input type="text" id="emp-endereco" value="${d.empresa.endereco||''}"></div>
-          <div class="form-group"><label>CEP</label><input type="text" id="emp-cep" value="${d.empresa.cep||''}"></div>
+
+        <div class="card" style="margin-bottom:0">
+          <div class="card-title">
+            <span class="card-title-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+              Assinatura
+            </span>
+            <span class="plan-badge ${badgeClasse}">${badgeTexto}</span>
+          </div>
+
+          ${trialBannerHtml}
+
+          ${usageRowHtml(iconFornecedores, 'Fornecedores cadastrados', totalFornecedores, d.limiteFornecedores)}
+          ${usageRowHtml(iconAdmins, 'Admins ativos', totalAdmins, d.limiteAdmins)}
+
+          <div class="upgrade-cards">
+            <div class="upgrade-card">
+              <div style="font-weight:700; margin-bottom:4px">Essencial</div>
+              <div style="font-size:19px; font-weight:700; color:var(--accent); margin-bottom:10px">R$ 149<span style="font-size:11.5px; font-weight:400; color:var(--text-muted)">/mês</span></div>
+              <button class="btn btn-secondary btn-block" onclick="assinarPlano('essencial')">Assinar Essencial</button>
+            </div>
+            <div class="upgrade-card recommended">
+              <span class="upgrade-card-tag">Recomendado</span>
+              <div style="font-weight:700; margin-bottom:4px">Profissional</div>
+              <div style="font-size:19px; font-weight:700; color:var(--accent); margin-bottom:10px">R$ 349<span style="font-size:11.5px; font-weight:400; color:var(--text-muted)">/mês</span></div>
+              <button class="btn btn-primary btn-block" onclick="assinarPlano('profissional')">Assinar Profissional</button>
+            </div>
+          </div>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:14px">Enterprise é negociado diretamente — fale com a gente. Enquanto o Stripe não estiver configurado no servidor, assinar não tem efeito ainda.</p>
         </div>
-        <div class="form-row">
-          <div class="form-group"><label>Telefone</label><input type="text" id="emp-tel" value="${d.empresa.tel||''}"></div>
-          <div class="form-group"><label>E-mail</label><input type="text" id="emp-email" value="${d.empresa.email||''}"></div>
-        </div>
-        <button class="btn btn-primary" onclick="salvarEmpresaAd()">Salvar dados</button>
+
       </div>
     </div>
 
@@ -341,7 +469,7 @@ function renderAdConfig() {
 
 function showConfigTabAd(tab, btn) {
   document.querySelectorAll('.config-tab-ad').forEach(el => el.style.display = 'none');
-  document.querySelectorAll('#ad-page-config > .tab-bar > .tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('#ad-page-config .config-tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById('config-tab-' + tab).style.display = 'block';
   btn.classList.add('active');
 }
@@ -1148,12 +1276,16 @@ function renderCamposFornecedorLista() {
   const wrap = document.getElementById('campos-fornecedor-lista');
   if (!wrap) return;
   if (!d.camposFornecedorCustom.length) { wrap.innerHTML = '<p style="font-size:12px; color:var(--text-muted)">Nenhum campo personalizado ainda.</p>'; return; }
-  wrap.innerHTML = `<table><thead><tr><th>Rótulo</th><th>Chave</th><th>Tipo</th><th></th></tr></thead><tbody>
-    ${d.camposFornecedorCustom.map(c => `<tr>
-      <td>${c.label}</td><td style="color:var(--text-muted)">${c.chave}</td><td>${c.tipo === 'select' ? 'Lista' : c.tipo === 'data' ? 'Data' : 'Texto'}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="removeCampoFornecedorCustom('${c.chave}')">Remover</button></td>
-    </tr>`).join('')}
-  </tbody></table>`;
+  const TIPO_LABEL = { select: 'Lista', data: 'Data', texto: 'Texto' };
+  wrap.innerHTML = d.camposFornecedorCustom.map(c => `
+    <div class="field-row">
+      <div>
+        <div class="field-row-label">${c.label}</div>
+        <div class="field-row-meta">${c.chave} · ${TIPO_LABEL[c.tipo] || 'Texto'}</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="removeCampoFornecedorCustom('${c.chave}')">Remover</button>
+    </div>
+  `).join('');
 }
 
 async function addCampoFornecedorCustom() {
@@ -1208,9 +1340,9 @@ function renderTiposDocumentoLista() {
   if (!wrap) return;
   if (!d.tiposDocumento.length) { wrap.innerHTML = '<p style="font-size:12px; color:var(--text-muted)">Nenhum tipo cadastrado ainda.</p>'; return; }
   wrap.innerHTML = d.tiposDocumento.map(t => `
-    <span style="display:inline-flex; align-items:center; gap:8px; padding:6px 8px 6px 14px; border:1px solid var(--border-strong); border-radius:999px; font-size:12.5px; background:var(--surface)">
+    <span style="display:inline-flex; align-items:center; gap:10px; padding:9px 10px 9px 16px; border:1px solid var(--border-strong); border-radius:999px; font-size:13px; background:var(--surface)">
       ${t}
-      <button onclick="removeTipoDocumento('${t.replace(/'/g, "\\'")}')" style="border:none; background:var(--surface2); color:var(--text-muted); width:18px; height:18px; border-radius:50%; cursor:pointer; font-size:12px; line-height:1; display:flex; align-items:center; justify-content:center" title="Remover">✕</button>
+      <button onclick="removeTipoDocumento('${t.replace(/'/g, "\\'")}')" style="border:none; background:var(--surface2); color:var(--text-muted); width:20px; height:20px; border-radius:50%; cursor:pointer; font-size:12px; line-height:1; display:flex; align-items:center; justify-content:center" title="Remover">✕</button>
     </span>
   `).join('');
 }
