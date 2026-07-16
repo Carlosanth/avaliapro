@@ -26,7 +26,7 @@ function renderAdUsuarios() {
     <div class="card">
       <div class="card-title">Lembrete pros avaliadores</div>
       <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px">Manda um e-mail agora pra todo avaliador com avaliação pendente, com o link de acesso. Funciona mesmo se o lembrete automático (Configurações → Cobrança automática) estiver desligado.</p>
-      <button class="btn btn-primary" id="btn-lembrete-avaliadores" onclick="enviarLembreteTodosAvaliadores()">📨 Enviar lembrete pra todos os pendentes${totalAvaliadoresPendentes ? ` (${totalAvaliadoresPendentes})` : ''}</button>
+      <button class="btn btn-primary" id="btn-lembrete-avaliadores" onclick="enviarLembreteTodosAvaliadores()">${ic('mail')} Enviar lembrete pra todos os pendentes${totalAvaliadoresPendentes ? ` (${totalAvaliadoresPendentes})` : ''}</button>
     </div>
     <div class="card">
       <div class="card-title">Usuários (${d.usuarios.length})</div>
@@ -44,13 +44,14 @@ async function enviarLembreteTodosAvaliadores() {
 
   if (btn) { btn.disabled = false; }
 
-  if (error) { console.error(error); toast('Não foi possível enviar os lembretes agora. Tente de novo em instantes.'); if (btn) btn.textContent = '📨 Enviar lembrete pra todos os pendentes'; return; }
+  const textoBtnPadrao = `${ic('mail')} Enviar lembrete pra todos os pendentes`;
+  if (error) { console.error(error); toast('Não foi possível enviar os lembretes agora. Tente de novo em instantes.'); if (btn) btn.innerHTML = textoBtnPadrao; return; }
   if (data && data.skip) {
-    if (btn) btn.textContent = '📨 Enviar lembrete pra todos os pendentes';
+    if (btn) btn.innerHTML = textoBtnPadrao;
     abrirLembreteManualMailto();
     return;
   }
-  if (data && data.ok === false) { console.error(data.error); toast('Não foi possível enviar os lembretes agora.'); if (btn) btn.textContent = '📨 Enviar lembrete pra todos os pendentes'; return; }
+  if (data && data.ok === false) { console.error(data.error); toast('Não foi possível enviar os lembretes agora.'); if (btn) btn.innerHTML = textoBtnPadrao; return; }
 
   addLog('lembrete_avaliadores_manual', `${currentUser.email} disparou lembrete manual pra avaliadores (${data.enviados} enviado(s), ${(data.erros || []).length} erro(s))`);
   await carregarUsuarios();
@@ -103,10 +104,12 @@ function renderUsuariosLista() {
         const falhouRecente = u.ultimo_erro_lembrete && (!u.ultimo_lembrete_em || new Date(u.ultimo_erro_lembrete_em) > new Date(u.ultimo_lembrete_em));
         const partes = [];
         if (pendentes) partes.push(`<span style="color:${atrasados ? 'var(--danger)' : 'var(--warn)'}">${pendentes} pendente(s)${atrasados ? `, ${atrasados} atrasada(s)` : ''}</span>`);
-        if (falhouRecente) partes.push(`<span style="color:var(--danger)" title="O envio automático não funcionou dessa vez. Tente enviar de novo pelo botão de lembrete.">❌ não conseguimos enviar o lembrete</span>`);
-        else if (u.ultimo_lembrete_em) partes.push(`<span style="color:var(--success)">📨 lembrete em ${new Date(u.ultimo_lembrete_em).toLocaleDateString('pt-BR')}</span>`);
+        if (falhouRecente) partes.push(`<span style="color:var(--danger); display:inline-flex; align-items:center; gap:4px" title="O envio automático não funcionou dessa vez. Tente enviar de novo pelo botão de lembrete.">${ic('xCircle', 12)} não conseguimos enviar o lembrete</span>`);
+        else if (u.ultimo_lembrete_em) partes.push(`<span style="color:var(--success); display:inline-flex; align-items:center; gap:4px">${ic('mail', 12)} lembrete em ${new Date(u.ultimo_lembrete_em).toLocaleDateString('pt-BR')}</span>`);
         if (partes.length) statusLembrete = `<div style="font-size:11px; margin-top:3px">${partes.join(' &nbsp;·&nbsp; ')}</div>`;
       }
+      const ehAdmin = u.papel === 'admin' || u.papel === 'admin_master';
+      const recebeCobranca = !!u.recebe_notificacao_cobranca;
       return `<tr>
       <td style="font-weight:500">${u.nome}${statusLembrete}</td>
       <td style="color:var(--text-sec)">${u.email}</td>
@@ -115,6 +118,7 @@ function renderUsuariosLista() {
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="resetSenha('${u.id}')">Redefinir senha</button>
         ${u.papel === 'admin' ? `<button class="btn btn-secondary btn-sm" onclick="abrirPermissoesUsuario('${u.id}')">Permissões</button>` : ''}
+        ${ehAdmin ? `<button class="btn btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:5px" title="Recebe cópia dos e-mails de cobrança automática e respostas dos fornecedores caem no e-mail dele" onclick="toggleNotificacaoCobranca('${u.id}')">${recebeCobranca ? ic('bell', 13) : ic('bellOff', 13)} Cobrança: ${recebeCobranca ? 'ligada' : 'desligada'}</button>` : ''}
         ${u.papel === 'admin_master' ? `<span style="font-size:11px; color:var(--text-muted); padding:0 6px">Admin+ tem acesso total e não pode ser removido</span>` : `
           <button class="btn btn-secondary btn-sm" onclick="toggleUsuario('${u.id}')">${u.ativo ? 'Desativar' : 'Ativar'}</button>
           <button class="btn btn-danger btn-sm" onclick="excluirUsuarioAd('${u.id}')">Excluir</button>
@@ -275,6 +279,33 @@ async function toggleUsuario(id) {
   addLog('usuario_status', `${currentUser.email} ${u.ativo ? 'ativou' : 'desativou'} o usuário ${u.email}`);
   renderUsuariosLista();
   toast(`Usuário ${u.ativo ? 'ativado' : 'desativado'}.`);
+}
+
+// Liga/desliga se esse admin (ou admin_master) recebe cópia (CC) dos
+// e-mails automáticos de cobrança de fornecedores, e se respostas do
+// fornecedor caem no e-mail dele (reply-to). Não passa por Edge Function —
+// é update direto em "profiles", coberto pela mesma RLS que já permite
+// admin alterar dados de usuário da própria empresa.
+async function toggleNotificacaoCobranca(id) {
+  const d = db();
+  const u = d.usuarios.find(x => x.id === id);
+  if (!u) return;
+  const novoValor = !u.recebe_notificacao_cobranca;
+
+  const { error } = await supabaseClient
+    .from('profiles')
+    .update({ recebe_notificacao_cobranca: novoValor })
+    .eq('id', id);
+
+  if (error) {
+    toast('Erro ao atualizar notificação de cobrança: ' + error.message);
+    return;
+  }
+
+  u.recebe_notificacao_cobranca = novoValor;
+  addLog('notificacao_cobranca_atualizada', `${currentUser.email} ${novoValor ? 'ativou' : 'desativou'} a notificação de cobrança para ${u.email}`);
+  renderUsuariosLista();
+  toast(`Notificação de cobrança ${novoValor ? 'ativada' : 'desativada'} para ${u.nome}.`);
 }
 
 async function excluirUsuarioAd(id) {
