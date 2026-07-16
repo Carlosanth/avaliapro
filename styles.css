@@ -711,6 +711,7 @@ body {
   gap: 14px;
   padding: 16px 22px;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
   transition: background 0.15s;
   align-items: stretch;
@@ -835,7 +836,6 @@ body {
   background: var(--navy);
   color: #fff;
   border-color: var(--navy);
-  t);
 }
 
 .btn-primary:hover {
@@ -1639,7 +1639,6 @@ tr:hover td {
   transition: all .15s ease;
   white-space: nowrap;
   font-family: inherit;
-  px -1px, rgba(0, 0, 0, 0.3) 0px 1px 3px -1px;
   box-shadow: rgba(50, 50, 93, 0.25) 0px 2px 5px -1px, rgba(0, 0, 0, 0.3) 0px 1px 3px -1px;
 }
 
@@ -2013,6 +2012,7 @@ tr:hover td {
   position: absolute;
   cursor: grab;
   white-space: pre-wrap;
+  -webkit-user-select: none;
   user-select: none;
   padding: 3px 5px;
   border-radius: 3px;
