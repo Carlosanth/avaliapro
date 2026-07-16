@@ -124,8 +124,10 @@ function renderAdConfig() {
   const PLANO_LABELS = { essencial: 'Essencial', profissional: 'Profissional', enterprise: 'Enterprise' };
   const statusAtual = d.statusEmpresa || 'ativa';
   const planoLabel = d.plano ? (PLANO_LABELS[d.plano] || d.plano) : null;
-  const badgeTexto = planoLabel ? `${planoLabel} · ${STATUS_LABELS[statusAtual] || statusAtual}` : (STATUS_LABELS[statusAtual] || statusAtual);
+  // pill de status (só "Ativa"/"Trial"/etc.) e a tag do nome do plano ficam separados agora
+  const badgeTexto = STATUS_LABELS[statusAtual] || statusAtual;
   const badgeClasse = STATUS_BADGE_CLASS[statusAtual] || 'ativo';
+  const planoTagHtml = planoLabel ? `<span class="plan-name-tag">${planoLabel}</span>` : '';
 
   let trialBannerHtml = '';
   if (statusAtual === 'trial' && d.trialTerminaEm) {
@@ -171,7 +173,7 @@ function renderAdConfig() {
     return isAdminMaster ? `R$ ${preco}` : '***';
   }
 
-  // Card de um plano ainda não assinado — botão "Assinar"
+  // Card de um plano ainda não assinado — botão "Assinar" (só aparece quando NÃO tem nenhum plano ativo ainda)
   function cardAssinarHtml(planoKey) {
     const { nome, preco, recomendado } = PLANOS_INFO[planoKey];
     const botao = isAdminMaster
@@ -186,13 +188,11 @@ function renderAdConfig() {
       </div>`;
   }
 
-  // Card do plano já assinado — no lugar de "Assinar" fica "Cancelar assinatura",
-  // e um link secundário pra revelar o outro plano (migrar em vez de cancelar).
+  // Card do plano já assinado — no lugar de "Assinar" fica "CANCELAR"
   function cardAssinadoHtml(planoKey) {
     const { nome, preco, recomendado } = PLANOS_INFO[planoKey];
     const acoes = isAdminMaster
-      ? `<button class="btn btn-danger btn-block" onclick="abrirCancelarAssinatura()">Cancelar assinatura</button>
-         <button type="button" class="btn-link-toggle" onclick="toggleOutroPlanoCard()">Trocar de plano</button>`
+      ? `<button class="btn btn-danger btn-block btn-cancelar" onclick="abrirCancelarAssinatura()">Cancelar</button>`
       : `<button class="btn btn-secondary btn-block" disabled style="display:flex; align-items:center; justify-content:center; gap:6px; opacity:.7; cursor:default">
            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
            Assinado
@@ -206,18 +206,34 @@ function renderAdConfig() {
       </div>`;
   }
 
+  // Card do OUTRO plano (o que não tá ativo) enquanto já existe uma assinatura ativa —
+  // fica acinzentado e bloqueado; só dá pra escolher ele depois de cancelar o atual.
+  function cardBloqueadoHtml(planoKey) {
+    const { nome, preco, recomendado } = PLANOS_INFO[planoKey];
+    return `
+      <div class="upgrade-card disabled${recomendado ? ' recommended' : ''}">
+        ${recomendado ? '<span class="upgrade-card-tag">Recomendado</span>' : ''}
+        <div style="font-weight:700; margin-bottom:4px">${nome}</div>
+        <div style="font-size:19px; font-weight:700; color:var(--accent); margin-bottom:10px">${precoTextoPlano(preco)}<span style="font-size:11.5px; font-weight:400; color:var(--text-muted)">/mês</span></div>
+        <button class="btn btn-secondary btn-block" disabled style="opacity:.5; cursor:not-allowed" title="Cancele a assinatura atual antes de trocar de plano">Assinar ${nome}</button>
+      </div>`;
+  }
+
   let upgradeCardsHtml;
   if (planoAtivo && PLANOS_INFO[planoAtivo]) {
     const planoOutro = planoAtivo === 'essencial' ? 'profissional' : 'essencial';
     upgradeCardsHtml = `
-      <div class="upgrade-cards single">${cardAssinadoHtml(planoAtivo)}</div>
-      <div class="upgrade-cards single" id="outro-plano-card" style="display:none; margin-top:12px">${cardAssinarHtml(planoOutro)}</div>`;
+      <div class="upgrade-cards">
+        ${cardAssinadoHtml(planoAtivo)}
+        ${cardBloqueadoHtml(planoOutro)}
+      </div>`;
   } else {
     upgradeCardsHtml = `
       <div class="upgrade-cards">
         ${cardAssinarHtml('essencial')}
         ${cardAssinarHtml('profissional')}
       </div>`;
+
   }
 
   document.getElementById('ad-page-config').innerHTML = `
@@ -501,9 +517,12 @@ function renderAdConfig() {
 
         <div class="card" style="margin-bottom:0">
           <div class="card-title">
-            <span class="card-title-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
-              Assinatura
+            <span style="display:flex; align-items:center; gap:8px">
+              <span class="card-title-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                Assinatura
+              </span>
+              ${planoTagHtml}
             </span>
             <span class="plan-badge ${badgeClasse}">${badgeTexto}</span>
           </div>
@@ -571,13 +590,6 @@ async function assinarPlano(plano) {
   if (!data.url) { toast('Checkout ainda não configurado no servidor.'); return; }
 
   window.location.href = data.url;
-}
-
-// Mostra/esconde o card do outro plano (pra migrar em vez de cancelar de vez)
-function toggleOutroPlanoCard() {
-  const el = document.getElementById('outro-plano-card');
-  if (!el) return;
-  el.style.display = el.style.display === 'none' ? '' : 'none';
 }
 
 // Só admin_master chama isso (o botão nem aparece pra admin comum, e o
