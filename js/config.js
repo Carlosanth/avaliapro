@@ -157,6 +157,33 @@ function renderAdConfig() {
   const iconFornecedores = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
   const iconAdmins = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>';
 
+  // ---- só admin_master vê valores/cancela; admin comum vê tudo mascarado (***) ----
+  const isAdminMaster = currentUser.papel === 'admin_master';
+
+  function upgradeCardHtml(planoKey, nome, preco, recomendado) {
+    const assinado = d.plano === planoKey && statusAtual === 'ativa';
+    const precoTexto = isAdminMaster ? `R$ ${preco}` : '***';
+    const botao = assinado
+      ? `<button class="btn btn-secondary btn-block" disabled style="display:flex; align-items:center; justify-content:center; gap:6px; opacity:.7; cursor:default">
+           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+           Assinado
+         </button>`
+      : (isAdminMaster
+          ? `<button class="btn ${recomendado ? 'btn-primary' : 'btn-secondary'} btn-block" onclick="assinarPlano('${planoKey}')">Assinar ${nome}</button>`
+          : `<button class="btn ${recomendado ? 'btn-primary' : 'btn-secondary'} btn-block" disabled style="opacity:.5; cursor:not-allowed" title="Só o Admin+ pode gerenciar a assinatura">Assinar ${nome}</button>`);
+    return `
+      <div class="upgrade-card${recomendado ? ' recommended' : ''}">
+        ${recomendado ? '<span class="upgrade-card-tag">Recomendado</span>' : ''}
+        <div style="font-weight:700; margin-bottom:4px">${nome}</div>
+        <div style="font-size:19px; font-weight:700; color:var(--accent); margin-bottom:10px">${precoTexto}<span style="font-size:11.5px; font-weight:400; color:var(--text-muted)">/mês</span></div>
+        ${botao}
+      </div>`;
+  }
+
+  const cancelarAssinaturaHtml = (isAdminMaster && statusAtual === 'ativa')
+    ? `<button class="btn btn-danger btn-sm" style="margin-top:14px" onclick="abrirCancelarAssinatura()">Cancelar assinatura</button>`
+    : '';
+
   document.getElementById('ad-page-config').innerHTML = `
     <div class="page-header"><div><h2>Configurações</h2><p>Matriz de qualificação, layout dos documentos e dados da empresa</p></div></div>
 
@@ -433,19 +460,11 @@ function renderAdConfig() {
           ${usageRowHtml(iconAdmins, 'Admins ativos', totalAdmins, d.limiteAdmins)}
 
           <div class="upgrade-cards">
-            <div class="upgrade-card">
-              <div style="font-weight:700; margin-bottom:4px">Essencial</div>
-              <div style="font-size:19px; font-weight:700; color:var(--accent); margin-bottom:10px">R$ 149<span style="font-size:11.5px; font-weight:400; color:var(--text-muted)">/mês</span></div>
-              <button class="btn btn-secondary btn-block" onclick="assinarPlano('essencial')">Assinar Essencial</button>
-            </div>
-            <div class="upgrade-card recommended">
-              <span class="upgrade-card-tag">Recomendado</span>
-              <div style="font-weight:700; margin-bottom:4px">Profissional</div>
-              <div style="font-size:19px; font-weight:700; color:var(--accent); margin-bottom:10px">R$ 349<span style="font-size:11.5px; font-weight:400; color:var(--text-muted)">/mês</span></div>
-              <button class="btn btn-primary btn-block" onclick="assinarPlano('profissional')">Assinar Profissional</button>
-            </div>
+            ${upgradeCardHtml('essencial', 'Essencial', 149, false)}
+            ${upgradeCardHtml('profissional', 'Profissional', 349, true)}
           </div>
-          <p style="font-size:11px; color:var(--text-muted); margin-top:14px">Enterprise é negociado diretamente — fale com a gente. Enquanto o Stripe não estiver configurado no servidor, assinar não tem efeito ainda.</p>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:14px">Enterprise é negociado diretamente — fale com a gente.</p>
+          ${cancelarAssinaturaHtml}
         </div>
 
       </div>
@@ -502,6 +521,50 @@ async function assinarPlano(plano) {
   if (!data.url) { toast('Checkout ainda não configurado no servidor.'); return; }
 
   window.location.href = data.url;
+}
+
+// Só admin_master chama isso (o botão nem aparece pra admin comum, e o
+// front confere de novo aqui — a Edge Function também confere no servidor).
+function abrirCancelarAssinatura() {
+  if (currentUser.papel !== 'admin_master') return;
+  openModal(`
+    <h3>Cancelar assinatura</h3>
+    <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px">
+      Isso desliga a renovação automática. O acesso ao plano atual continua valendo até o fim do período já pago — depois disso a conta cai pra bloqueada.
+      Pra confirmar, digite sua senha.
+    </p>
+    <div class="form-group">
+      <label>Sua senha</label>
+      <input type="password" id="cancel-assinatura-senha" placeholder="••••••••">
+    </div>
+    <div style="display:flex; gap:8px; margin-top:10px">
+      <button class="btn btn-danger btn-block" onclick="confirmarCancelamentoAssinatura()">Confirmar cancelamento</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Voltar</button>
+    </div>
+  `);
+}
+
+async function confirmarCancelamentoAssinatura() {
+  const senha = document.getElementById('cancel-assinatura-senha').value;
+  if (!senha) { toast('Digite sua senha pra confirmar.'); return; }
+
+  // reautentica com a própria senha antes de deixar cancelar qualquer coisa
+  const { error: erroSenha } = await supabaseClient.auth.signInWithPassword({ email: currentUser.email, password: senha });
+  if (erroSenha) { toast('Senha incorreta.'); return; }
+
+  toast('Cancelando assinatura...');
+  const { data, error } = await supabaseClient.functions.invoke('cancelar-assinatura', { body: {} });
+
+  if (error || (data && data.ok === false)) {
+    toast((data && data.error) || 'Não foi possível cancelar agora. Tenta de novo em instantes.');
+    return;
+  }
+
+  closeModal();
+  addLog('assinatura_cancelada', `${currentUser.email} cancelou a assinatura da empresa`);
+  toast('Assinatura cancelada. O acesso continua até o fim do período já pago.');
+  await carregarEmpresaConfig();
+  renderAdConfig();
 }
 
 async function salvarConfigLembreteAvaliador() {
