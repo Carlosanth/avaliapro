@@ -854,7 +854,7 @@ function renderAdminShell() {
 
   const nomeEmpresaSidebar = empresaConfigCache.nome || 'Gestão da Qualidade';
   document.getElementById('sidebar').innerHTML = `
-    <div class="sidebar-logo"><h1>AvaliaPro</h1><p title="${nomeEmpresaSidebar}">${nomeEmpresaSidebar}</p></div>
+    <div class="sidebar-logo"><h1>HomologPro</h1><p title="${nomeEmpresaSidebar}">${nomeEmpresaSidebar}</p></div>
     <div class="sidebar-user">
       <div class="sidebar-user-avatar">${currentUser.nome.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
       <div class="sidebar-user-info">

@@ -1,7 +1,7 @@
 let empresasCachePlataforma = [];
 
 // Conexão com o Supabase — embutida aqui (não depende de nenhum outro
-// arquivo da pasta principal do AvaliaPro, essa página é independente).
+// arquivo da pasta principal do HomologPro, essa página é independente).
 const SUPABASE_URL = 'https://qmvfsgwzbrhbxyonntgh.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_JjiXWFQTcOrUf5RXjsfeVw_5cwLPHf3';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);

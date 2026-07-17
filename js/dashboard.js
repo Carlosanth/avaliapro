@@ -67,7 +67,6 @@ function renderAdDashboard() {
 
   let statsHTML = '';
   let alertaAprovacao = '';
-  let alertaAvaliadoresPendentes = '';
   let alertaNotificar = '';
   let alertasDoc = '';
   let alertasDocUnidades = '';
@@ -79,22 +78,29 @@ function renderAdDashboard() {
     const pendentesAprovacao = (d.documentosPendentesAprovacao || []).filter(p => p.status === 'pendente');
     if (pendentesAprovacao.length) {
       alertaAprovacao = `
-        <div class="card" style="border-left: 3px solid var(--accent); margin-bottom:16px">
-          <div class="card-title" style="display:flex; align-items:center; gap:7px">${ic('inbox', 15)} Documentos enviados pelo portal — aguardando aprovação</div>
-          ${pendentesAprovacao.map(p => {
-            const forn = d.fornecedores.find(f => f.id === p.fornecedorId);
-            const doc = d.documentos.find(x => x.id === p.documentoId);
-            return `
-              <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px">
-                <div style="flex:1">
-                  <b>${forn ? forn.nome : '—'}</b> enviou <b>${doc ? doc.nome : p.nomeArquivo}</b>
-                  <div style="font-size:11px; color:var(--text-muted)">Nova validade: ${new Date(p.novaValidade + 'T00:00:00').toLocaleDateString('pt-BR')} · enviado em ${new Date(p.enviadoEm).toLocaleDateString('pt-BR')}</div>
-                </div>
-                ${p.caminhoStorage ? `<button class="btn btn-secondary btn-sm" onclick="baixarPendenteAprovacao('${p.id}')">${ic('fileText', 13)} Ver</button>` : ''}
-                <button class="btn btn-primary btn-sm" onclick="aprovarPendenteAprovacao('${p.id}')">${ic('check', 13)} Aprovar</button>
-                <button class="btn btn-danger btn-sm" onclick="rejeitarPendenteAprovacao('${p.id}')">${ic('x', 13)} Rejeitar</button>
-              </div>`;
-          }).join('')}
+        <div class="card alert-collapse alerta-shake" id="alerta-aprovacao-portal" style="border-left: 3px solid var(--accent); margin-bottom:16px">
+          <div class="alert-collapse-header" onclick="toggleAlertaCollapse('alerta-aprovacao-portal')">
+            ${ic('inbox', 15)}
+            <span class="card-title" style="margin-bottom:0">Documentos enviados pelo portal — aguardando aprovação</span>
+            <span style="font-size:11px; font-weight:400; color:var(--text-muted)">${pendentesAprovacao.length} ocorrência(s)</span>
+            <span class="alert-collapse-chevron">${ic('chevronDown', 16)}</span>
+          </div>
+          <div class="alert-collapse-body">
+            ${pendentesAprovacao.map(p => {
+              const forn = d.fornecedores.find(f => f.id === p.fornecedorId);
+              const doc = d.documentos.find(x => x.id === p.documentoId);
+              return `
+                <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px">
+                  <div style="flex:1">
+                    <b>${forn ? forn.nome : '—'}</b> enviou <b>${doc ? doc.nome : p.nomeArquivo}</b>
+                    <div style="font-size:11px; color:var(--text-muted)">Nova validade: ${new Date(p.novaValidade + 'T00:00:00').toLocaleDateString('pt-BR')} · enviado em ${new Date(p.enviadoEm).toLocaleDateString('pt-BR')}</div>
+                  </div>
+                  ${p.caminhoStorage ? `<button class="btn btn-secondary btn-sm" onclick="baixarPendenteAprovacao('${p.id}')">${ic('fileText', 13)} Ver</button>` : ''}
+                  <button class="btn btn-primary btn-sm" onclick="aprovarPendenteAprovacao('${p.id}')">${ic('check', 13)} Aprovar</button>
+                  <button class="btn btn-danger btn-sm" onclick="rejeitarPendenteAprovacao('${p.id}')">${ic('x', 13)} Rejeitar</button>
+                </div>`;
+            }).join('')}
+          </div>
         </div>`;
     }
   }
@@ -113,7 +119,7 @@ function renderAdDashboard() {
     const reprovadosMes = reprovadosLista.filter(av => getSituacao(av.nota) === 'reprovado').length;
     const reprovadosMesAnteriorLista = d.avaliacoes.filter(av => av.periodo === chaveMesAnterior && !av.semServico && getSituacao(av.nota) === 'reprovado');
 
-    cards.push(`<div class="stat-card"><div class="stat-label">Avaliações enviadas</div><div class="stat-value" style="color:var(--success)">${enviadosMes}</div>${deltaMesHTML(enviadosMes, enviadosMesAnterior, false)}</div>`);
+    cards.push(`<div class="stat-card" style="cursor:pointer" onclick="abrirModalAvaliacoesEnviadas()"><div class="stat-label">Avaliações enviadas</div><div class="stat-value" style="color:var(--success)">${enviadosMes}</div>${deltaMesHTML(enviadosMes, enviadosMesAnterior, false)}</div>`);
     let subPendentes = '<div class="stat-sub">aguardando setor</div>';
     let podeAbrirModalPendentes = false;
     if (temAcessoModulo('usuarios')) {
@@ -125,27 +131,6 @@ function renderAdDashboard() {
       if (avaliadoresPendentesLista.length) {
         podeAbrirModalPendentes = true;
         subPendentes = `<div class="stat-sub" style="color:var(--warn)">${avaliadoresPendentesLista.length} avaliador(es) com pendência — clique para ver</div>`;
-
-        alertaAvaliadoresPendentes = `
-          <div class="card alert-collapse" id="alerta-avaliadores-pendentes" style="border-left: 3px solid var(--warn); margin-bottom:16px">
-            <div class="alert-collapse-header" onclick="toggleAlertaCollapse('alerta-avaliadores-pendentes')">
-              ${ic('users', 15)}
-              <span class="card-title" style="margin-bottom:0; color:var(--warn)">Avaliadores com avaliação pendente</span>
-              <span style="font-size:11px; font-weight:400; color:var(--text-muted)">${avaliadoresPendentesLista.length} avaliador(es)</span>
-              <span class="alert-collapse-chevron">${ic('chevronDown', 16)}</span>
-            </div>
-            <div class="alert-collapse-body">
-              ${avaliadoresPendentesLista.map(item => `
-                <div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12px">
-                  <span><b>${item.usuario.nome}</b></span>
-                  <span style="color:var(--text-muted)">${item.pendentes} pendente(s)${item.atrasados ? `, ${item.atrasados} atrasada(s)` : ''}</span>
-                  ${item.atrasados ? '<span class="badge badge-danger" style="margin-left:auto">Atrasado</span>' : ''}
-                </div>`).join('')}
-              <div style="margin-top:10px">
-                <button class="btn btn-primary btn-sm" style="display:inline-flex; align-items:center; gap:6px" onclick="enviarLembreteTodosAvaliadores()">${ic('mail', 13)} Lembrar todos</button>
-              </div>
-            </div>
-          </div>`;
       }
     }
     cards.push(`<div class="stat-card" ${podeAbrirModalPendentes ? 'style="cursor:pointer" onclick="abrirModalAvaliadoresPendentes()"' : ''}><div class="stat-label">Pendentes</div><div class="stat-value" style="color:var(--warn)">${Math.max(0, pendentesMes)}</div>${subPendentes}</div>`);
@@ -225,7 +210,7 @@ function renderAdDashboard() {
         </div>`;
       };
       alertasDoc = `
-        <div class="card alert-collapse" id="alerta-docs-fornecedores" style="border-left: 3px solid var(--danger); margin-bottom:16px">
+        <div class="card alert-collapse alerta-shake" id="alerta-docs-fornecedores" style="border-left: 3px solid var(--danger); margin-bottom:16px">
           <div class="alert-collapse-header" onclick="toggleAlertaCollapse('alerta-docs-fornecedores')">
             ${ic('alertTriangle', 15)}
             <span class="card-title" style="margin-bottom:0; color:var(--danger)">Documentos de fornecedores que precisam de atenção</span>
@@ -297,14 +282,12 @@ function renderAdDashboard() {
     }
   }
 
-  const semNadaParaMostrar = !statsHTML && !alertaAprovacao && !alertaAvaliadoresPendentes && !alertaNotificar && !alertasDoc && !alertasDocUnidades && !graficosHTML && !tabelaHTML;
-
+  const semNadaParaMostrar = !statsHTML && !alertaAprovacao && !alertaNotificar && !alertasDoc && !alertasDocUnidades && !graficosHTML && !tabelaHTML;
   document.getElementById('ad-page-dashboard').innerHTML = `
     <div class="page-header"><div><h2>Dashboard e notificações</h2><p>${MESES[mesAtual]} de ${anoAtual}</p></div></div>
     ${onboardingHTML}
     ${statsHTML}
     ${alertaAprovacao}
-    ${alertaAvaliadoresPendentes}
     ${alertaNotificar}
     ${alertasDoc}
     ${alertasDocUnidades}
@@ -318,6 +301,50 @@ function renderAdDashboard() {
 function toggleAlertaCollapse(cardId) {
   const card = document.getElementById(cardId);
   if (card) card.classList.toggle('open');
+}
+
+// ---------- MINI-RELATÓRIO "AVALIAÇÕES ENVIADAS" (popup do stat-card) ----------
+// Por setor (= cada formulário), calcula quantas associações fornecedor↔avaliador
+// daquele formulário já foram avaliadas neste mês vs. quantas deveriam ser.
+// Isso dá o % de conclusão do setor (bate com a lógica do stat-card "Pendentes").
+function calcularSetoresEnviadosMes(d, chaveMes) {
+  return d.formularios.map(form => {
+    const assocsDoForm = d.associacoes.filter(a => a.formularioId === form.id);
+    const total = assocsDoForm.length;
+    if (!total) return null;
+    const completos = assocsDoForm.filter(a =>
+      d.avaliacoes.some(av => av.formularioId === form.id && av.fornecedorId === a.fornecedorId && av.usuarioId === a.usuarioId && av.periodo === chaveMes)
+    ).length;
+    return { formId: form.id, nome: form.nome, total, completos, pct: Math.round((completos / total) * 100) };
+  }).filter(Boolean).sort((a, b) => b.pct - a.pct || a.nome.localeCompare(b.nome));
+}
+
+function barraPercentualHTML(label, pct) {
+  const cor = pct >= 100 ? 'var(--success)' : (pct > 0 ? 'var(--warn)' : 'var(--danger)');
+  return `
+    <div style="margin-bottom:12px">
+      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px">
+        <span>${label}</span><span style="font-weight:700; color:${cor}">${pct}%</span>
+      </div>
+      <div style="background:var(--surface2); border-radius:6px; height:9px; overflow:hidden">
+        <div style="width:${pct}%; height:100%; background:${cor}; border-radius:6px; transition:width .3s"></div>
+      </div>
+    </div>`;
+}
+
+function abrirModalAvaliacoesEnviadas() {
+  const d = db();
+  const mesAtual = new Date().getMonth() + 1, anoAtual = new Date().getFullYear();
+  const chaveMes = `${anoAtual}-${mesAtual}`;
+  const periodoLabel = `${MESES[mesAtual]} de ${anoAtual}`;
+  const dados = calcularSetoresEnviadosMes(d, chaveMes);
+
+  openModal(`
+    <h3>Avaliações enviadas — ${periodoLabel}</h3>
+    <div style="max-height:400px; overflow-y:auto; margin-top:14px">
+      ${dados.length ? dados.map(s => barraPercentualHTML(s.nome, s.pct)).join('') : '<div class="empty-state"><p>Nenhum setor com formulário associado ainda.</p></div>'}
+    </div>
+  `);
 }
 
 // Popup com o detalhe de quem tem avaliação pendente — aberto ao clicar no

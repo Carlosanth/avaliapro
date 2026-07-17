@@ -366,6 +366,21 @@ body {
   display: block;
 }
 
+/* Tremida sutil, uma única vez, quando o card de alerta aparece no
+   carregamento da página — chama atenção sem ficar irritante. */
+@keyframes alertaShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+
+.alerta-shake {
+  animation: alertaShake 0.4s ease-in-out 2;
+  animation-delay: 0.3s;
+}
+
 .progresso-overlay {
   position: fixed;
   inset: 0;
