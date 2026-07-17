@@ -26,7 +26,7 @@ function contarPendentesAvaliador(d, usuarioId) {
 
 function renderAvaliadorShell() {
   document.getElementById('sidebar').innerHTML = `
-    <div class="sidebar-logo"><h1>AvaliaPro</h1><p>Área do avaliador</p></div>
+    <div class="sidebar-logo"><h1>HomologPro</h1><p>Área do avaliador</p></div>
     <div class="sidebar-user">
       <div class="sidebar-user-avatar">${currentUser.nome.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
       <div class="sidebar-user-info">
@@ -229,8 +229,8 @@ function renderFormFill(form, fornecedor, assoc, existente, travado, chaveMes) {
         <div id="anexos-lista"></div>
       </div>
 
-      <label class="opcao-row ${existente && existente.semServico ? 'selected' : ''}" style="margin-top:14px; border-top:1px dashed var(--border); padding-top:14px" onclick="event.preventDefault()">
-        <input type="checkbox" id="chk-nao-houve-geral" ${existente && existente.semServico ? 'checked' : ''} ${travado ? 'disabled' : ''} onchange="toggleNaoHouveGeral(this.checked)">
+      <label class="opcao-row ${existente && existente.semServico ? 'selected' : ''}" style="margin-top:14px; border-top:1px dashed var(--border); padding-top:14px">
+        <input type="checkbox" id="chk-nao-houve-geral" ${existente && existente.semServico ? 'checked' : ''} ${travado ? 'disabled' : ''} onchange="toggleNaoHouveGeral(this.checked, this)">
         <span class="opcao-label">Não houve atendimento/fornecimento neste mês</span>
       </label>
 
@@ -286,10 +286,14 @@ function updateNotaPreview() {
   }
 }
 
-function toggleNaoHouveGeral(checked) {
+function toggleNaoHouveGeral(checked, checkboxEl) {
   window._formAtual.naoHouveGeral = checked;
   const criteriosWrap = document.getElementById('criterios-wrap');
   if (criteriosWrap) criteriosWrap.style.cssText = checked ? 'opacity:.4; pointer-events:none' : '';
+  if (checkboxEl && checkboxEl.closest) {
+    const linha = checkboxEl.closest('.opcao-row');
+    if (linha) linha.classList.toggle('selected', checked);
+  }
   updateNotaPreview();
 }
 
