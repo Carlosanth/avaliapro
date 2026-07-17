@@ -75,6 +75,7 @@ function db() {
     valorDescontoOcorrencia: empresaConfigCache.valor_desconto_ocorrencia,
     anosRetencaoAvaliacao: empresaConfigCache.anos_retencao_avaliacao,
     statusEmpresa: empresaConfigCache.status,
+    plano: empresaConfigCache.plano,
     trialTerminaEm: empresaConfigCache.trial_termina_em,
     limiteFornecedores: empresaConfigCache.limite_fornecedores, // null = ilimitado
     limiteAdmins: empresaConfigCache.limite_admins, // null = ilimitado
@@ -462,7 +463,7 @@ async function carregarAvaliacoes() {
 async function carregarEmpresaConfig() {
   const { data, error } = await supabaseClient
     .from('empresas')
-    .select('nome, campos_fornecedor_custom, colunas_fornecedor_visiveis, tipos_documento, faixas_conceito_produto, desconto_ocorrencia_ativo, valor_desconto_ocorrencia, anos_retencao_avaliacao, config, status, trial_termina_em, limite_fornecedores, limite_admins, cobranca_automatica_ativa, cobranca_automatica_frequencia, lembrete_avaliador_ativo, lembrete_avaliador_frequencia')
+    .select('nome, campos_fornecedor_custom, colunas_fornecedor_visiveis, tipos_documento, faixas_conceito_produto, desconto_ocorrencia_ativo, valor_desconto_ocorrencia, anos_retencao_avaliacao, config, status, plano, trial_termina_em, limite_fornecedores, limite_admins, cobranca_automatica_ativa, cobranca_automatica_frequencia, lembrete_avaliador_ativo, lembrete_avaliador_frequencia, notificar_atividade_ativo')
     .eq('id', currentUser.empresaId)
     .single();
 
@@ -481,6 +482,7 @@ async function carregarEmpresaConfig() {
     anos_retencao_avaliacao: data.anos_retencao_avaliacao ?? null,
     config: data.config || {},
     status: data.status || 'ativa',
+    plano: data.plano || null,
     trial_termina_em: data.trial_termina_em || null,
     limite_fornecedores: data.limite_fornecedores ?? null, // null = ilimitado
     limite_admins: data.limite_admins ?? null, // null = ilimitado
@@ -488,6 +490,7 @@ async function carregarEmpresaConfig() {
     cobranca_automatica_frequencia: data.cobranca_automatica_frequencia || 'chave',
     lembrete_avaliador_ativo: !!data.lembrete_avaliador_ativo,
     lembrete_avaliador_frequencia: data.lembrete_avaliador_frequencia || 'chave',
+    notificar_atividade_ativo: !!data.notificar_atividade_ativo,
   };
 }
 
