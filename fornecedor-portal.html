@@ -131,7 +131,7 @@
     <path d="M40 61 L53 75 L82 45" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
   <div class="top-brand-text">
-    <b>AvaliaPro</b>
+    <b>HomologPro</b>
     <span>Gestão de Qualificação de Fornecedores</span>
   </div>
 </div>
@@ -223,7 +223,7 @@ function iniciarTimerSessao() {
 }
 
 async function carregar() {
-  document.getElementById('foot-copy').textContent = `AvaliaPro © ${new Date().getFullYear()} • Todos os direitos reservados. • Suporte: ${SUPORTE_CONTATO}`;
+  document.getElementById('foot-copy').textContent = `HomologPro © ${new Date().getFullYear()} • Todos os direitos reservados. • Suporte: ${SUPORTE_CONTATO}`;
 
   if (!token) {
     document.getElementById('conteudo').innerHTML = '<div class="erro">Link inválido. Peça o link correto pra quem te enviou.</div>';
@@ -244,7 +244,7 @@ async function carregar() {
   document.getElementById('head-fornecedor-nome').textContent = data.fornecedorNome;
   // data.fornecedorCnpj é opcional — se sua Edge Function não devolver esse campo, essa linha só some.
   document.getElementById('head-sub').textContent = data.fornecedorCnpj
-    ? `CNPJ: ${data.fornecedorCnpj}`
+    ? `CNPJ: ${data.fornecedorCnpj} — ${data.empresaNome}`
     : data.empresaNome;
 
   renderDocumentos(data.documentos, data.pendentesIds);
