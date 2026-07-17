@@ -75,6 +75,7 @@ function db() {
     valorDescontoOcorrencia: empresaConfigCache.valor_desconto_ocorrencia,
     anosRetencaoAvaliacao: empresaConfigCache.anos_retencao_avaliacao,
     statusEmpresa: empresaConfigCache.status,
+    plano: empresaConfigCache.plano,
     trialTerminaEm: empresaConfigCache.trial_termina_em,
     limiteFornecedores: empresaConfigCache.limite_fornecedores, // null = ilimitado
     limiteAdmins: empresaConfigCache.limite_admins, // null = ilimitado
@@ -462,7 +463,7 @@ async function carregarAvaliacoes() {
 async function carregarEmpresaConfig() {
   const { data, error } = await supabaseClient
     .from('empresas')
-    .select('nome, campos_fornecedor_custom, colunas_fornecedor_visiveis, tipos_documento, faixas_conceito_produto, desconto_ocorrencia_ativo, valor_desconto_ocorrencia, anos_retencao_avaliacao, config, status, trial_termina_em, limite_fornecedores, limite_admins, cobranca_automatica_ativa, cobranca_automatica_frequencia, lembrete_avaliador_ativo, lembrete_avaliador_frequencia')
+    .select('nome, campos_fornecedor_custom, colunas_fornecedor_visiveis, tipos_documento, faixas_conceito_produto, desconto_ocorrencia_ativo, valor_desconto_ocorrencia, anos_retencao_avaliacao, config, status, plano, trial_termina_em, limite_fornecedores, limite_admins, cobranca_automatica_ativa, cobranca_automatica_frequencia, lembrete_avaliador_ativo, lembrete_avaliador_frequencia, notificar_atividade_ativo')
     .eq('id', currentUser.empresaId)
     .single();
 
@@ -481,6 +482,7 @@ async function carregarEmpresaConfig() {
     anos_retencao_avaliacao: data.anos_retencao_avaliacao ?? null,
     config: data.config || {},
     status: data.status || 'ativa',
+    plano: data.plano || null,
     trial_termina_em: data.trial_termina_em || null,
     limite_fornecedores: data.limite_fornecedores ?? null, // null = ilimitado
     limite_admins: data.limite_admins ?? null, // null = ilimitado
@@ -488,6 +490,7 @@ async function carregarEmpresaConfig() {
     cobranca_automatica_frequencia: data.cobranca_automatica_frequencia || 'chave',
     lembrete_avaliador_ativo: !!data.lembrete_avaliador_ativo,
     lembrete_avaliador_frequencia: data.lembrete_avaliador_frequencia || 'chave',
+    notificar_atividade_ativo: !!data.notificar_atividade_ativo,
   };
 }
 
@@ -778,11 +781,26 @@ function montarNotificacoes() {
 }
 
 function atualizarBadgeNotificacoes() {
-  const badge = document.getElementById('nav-dashboard-badge');
+  const badge = document.getElementById('notif-badge');
   if (!badge) return;
   const total = montarNotificacoes().length;
   badge.textContent = total > 99 ? '99+' : total;
   badge.style.display = total > 0 ? 'flex' : 'none';
+}
+
+function abrirCentralNotificacoes() {
+  const itens = montarNotificacoes().sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0));
+  openModal(`
+    <h3>Notificações</h3>
+    <div style="max-height:400px; overflow-y:auto; margin-top:12px">
+      ${itens.length ? itens.map(item => `
+        <div style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer" onclick="closeModal(); showAdPage('${item.modulo}', document.querySelector('#sidebar .nav-item[onclick*=\\'${item.modulo}\\']'))">
+          <span style="width:8px; height:8px; border-radius:50%; flex-shrink:0; background:${item.urgente ? 'var(--danger)' : 'var(--warn)'}"></span>
+          <span>${item.texto}</span>
+        </div>
+      `).join('') : '<div class="empty-state"><p>Nada pendente por aqui. 🎉</p></div>'}
+    </div>
+  `);
 }
 
 // Popup central de progresso — mostra "carregando" enquanto uma ação roda,
@@ -818,7 +836,7 @@ function esconderProgresso() {
   if (overlay) overlay.classList.remove('active');
 }
 const MODULOS_MENU = [
-  { chave: 'dashboard', label: 'Dashboard e notificações', icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>' },
+  { chave: 'dashboard', label: 'Dashboard', icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>' },
   { chave: 'meusdocumentos', label: 'Meus Documentos', icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>' },
   { chave: 'fornecedores', label: 'Fornecedores', icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>' },
   { chave: 'avaliar', label: 'Avaliar', icone: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/></svg>' },
@@ -836,7 +854,7 @@ function renderAdminShell() {
 
   const nomeEmpresaSidebar = empresaConfigCache.nome || 'Gestão da Qualidade';
   document.getElementById('sidebar').innerHTML = `
-    <div class="sidebar-logo"><h1>HomologPro</h1><p title="${nomeEmpresaSidebar}">${nomeEmpresaSidebar}</p></div>
+    <div class="sidebar-logo"><h1>AvaliaPro</h1><p title="${nomeEmpresaSidebar}">${nomeEmpresaSidebar}</p></div>
     <div class="sidebar-user">
       <div class="sidebar-user-avatar">${currentUser.nome.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
       <div class="sidebar-user-info">
@@ -862,7 +880,6 @@ function renderAdminShell() {
         <button class="nav-item ${m.chave === primeiroModulo ? 'active' : ''}" onclick="showAdPage('${m.chave}', this)">
           ${m.icone}
           ${m.label}
-          ${m.chave === 'dashboard' ? '<span class="nav-badge" id="nav-dashboard-badge">0</span>' : ''}
         </button>
       `).join('')}
     </div>
