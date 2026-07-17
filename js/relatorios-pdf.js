@@ -152,7 +152,7 @@ function gerarPDFDoc(fornecedor, periodo, layoutOverride) {
     doc.setTextColor(...(b.variavel === 'situacao' ? corSituacao : hexParaRGB(b.cor)));
     const linhas = doc.splitTextToSize(texto, b.largura || 160);
     let y = b.y;
-    linhas.forEach(linha => { doc.text(linha, b.x, y, { align: b.align }); y += b.tamanho * 0.5 + 1; });
+    linhas.forEach(linha => { doc.text(linha, b.x, y, { align: b.align, maxWidth: b.largura || 160 }); y += b.tamanho * 0.5 + 1; });
   });
 
   return doc.output('arraybuffer');

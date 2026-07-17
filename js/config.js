@@ -1104,7 +1104,7 @@ function renderLayoutBlocks(tipo) {
     const vazio = !valorResolvido;
     const texto = vazio ? (b.variavel === 'corpo_texto' ? 'Insira o corpo do texto aqui' : `{${b.variavel}}`) : valorResolvido;
     div.textContent = texto;
-    const translate = b.align === 'center' ? '-50%' : b.align === 'right' ? '-100%' : '0%';
+    const translate = b.align === 'center' ? '-50%' : b.align === 'right' ? '-100%' : '0%'; // 'justify' também ancora à esquerda (0%)
     // b.tamanho é em pontos (pt), igual ao doc.setFontSize() do jsPDF. Precisa converter
     // pt -> mm (1pt = 0.352778mm) -> px da tela (dims.scale), senão o preview fica com
     // um tamanho de fonte totalmente diferente do PDF gerado.
@@ -1278,6 +1278,7 @@ function renderLayoutSidebar(tipo) {
         <button class="${b.align==='left'?'active':''}" onclick="atualizarBlocoLayout('${tipo}','align','left')">Esquerda</button>
         <button class="${b.align==='center'?'active':''}" onclick="atualizarBlocoLayout('${tipo}','align','center')">Centro</button>
         <button class="${b.align==='right'?'active':''}" onclick="atualizarBlocoLayout('${tipo}','align','right')">Direita</button>
+        <button class="${b.align==='justify'?'active':''}" onclick="atualizarBlocoLayout('${tipo}','align','justify')">Justificar</button>
       </div>
     </div>
 
@@ -1340,17 +1341,26 @@ function startDragBlock(e, tipo, id) {
   e.preventDefault(); e.stopPropagation();
   selecionarBlocoLayout(tipo, id);
   const rect = document.getElementById('layout-canvas-' + tipo).getBoundingClientRect();
-  dragInfo = { tipo, id, rect };
+  const dims = LAYOUT_DIMS[tipo];
+  const b = layoutEditorState[tipo].blocos.find(x => x.id === id);
+  // Guarda a diferença entre onde o mouse clicou e a âncora (x,y) do bloco,
+  // pra manter essa mesma diferença durante todo o arraste — assim a caixa
+  // não "pula" pra debaixo do cursor quando você clica no meio dela, e sim
+  // acompanha suave a partir do ponto onde você segurou.
+  const offsetX = (e.clientX - rect.left) - b.x * dims.scale;
+  const offsetY = (e.clientY - rect.top) - b.y * dims.scale;
+  dragInfo = { tipo, id, rect, offsetX, offsetY };
+  document.body.style.cursor = 'grabbing';
   document.addEventListener('mousemove', onDragBlock);
   document.addEventListener('mouseup', endDragBlock);
 }
 function onDragBlock(e) {
   if (!dragInfo) return;
-  const { rect, tipo, id } = dragInfo;
+  const { rect, tipo, id, offsetX, offsetY } = dragInfo;
   const dims = LAYOUT_DIMS[tipo];
   const b = layoutEditorState[tipo].blocos.find(x => x.id === id);
-  let xPx = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
-  let yPx = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+  let xPx = Math.max(0, Math.min(rect.width, (e.clientX - rect.left) - offsetX));
+  let yPx = Math.max(0, Math.min(rect.height, (e.clientY - rect.top) - offsetY));
   b.x = +(xPx / dims.scale).toFixed(1);
   b.y = +(yPx / dims.scale).toFixed(1);
 
@@ -1374,6 +1384,7 @@ function onDragBlock(e) {
 function endDragBlock() {
   const tipo = dragInfo && dragInfo.tipo;
   dragInfo = null;
+  document.body.style.cursor = '';
   document.removeEventListener('mousemove', onDragBlock);
   document.removeEventListener('mouseup', endDragBlock);
   if (tipo) { layoutGuides[tipo] = { v: null, h: null }; renderLayoutBlocks(tipo); }
