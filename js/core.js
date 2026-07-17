@@ -781,26 +781,11 @@ function montarNotificacoes() {
 }
 
 function atualizarBadgeNotificacoes() {
-  const badge = document.getElementById('notif-badge');
+  const badge = document.getElementById('nav-dashboard-badge');
   if (!badge) return;
   const total = montarNotificacoes().length;
   badge.textContent = total > 99 ? '99+' : total;
   badge.style.display = total > 0 ? 'flex' : 'none';
-}
-
-function abrirCentralNotificacoes() {
-  const itens = montarNotificacoes().sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0));
-  openModal(`
-    <h3>Notificações</h3>
-    <div style="max-height:400px; overflow-y:auto; margin-top:12px">
-      ${itens.length ? itens.map(item => `
-        <div style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer" onclick="closeModal(); showAdPage('${item.modulo}', document.querySelector('#sidebar .nav-item[onclick*=\\'${item.modulo}\\']'))">
-          <span style="width:8px; height:8px; border-radius:50%; flex-shrink:0; background:${item.urgente ? 'var(--danger)' : 'var(--warn)'}"></span>
-          <span>${item.texto}</span>
-        </div>
-      `).join('') : '<div class="empty-state"><p>Nada pendente por aqui. 🎉</p></div>'}
-    </div>
-  `);
 }
 
 // Popup central de progresso — mostra "carregando" enquanto uma ação roda,
@@ -836,7 +821,7 @@ function esconderProgresso() {
   if (overlay) overlay.classList.remove('active');
 }
 const MODULOS_MENU = [
-  { chave: 'dashboard', label: 'Dashboard', icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>' },
+  { chave: 'dashboard', label: 'Dashboard e notificações', icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>' },
   { chave: 'meusdocumentos', label: 'Meus Documentos', icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>' },
   { chave: 'fornecedores', label: 'Fornecedores', icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>' },
   { chave: 'avaliar', label: 'Avaliar', icone: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/></svg>' },
@@ -880,6 +865,7 @@ function renderAdminShell() {
         <button class="nav-item ${m.chave === primeiroModulo ? 'active' : ''}" onclick="showAdPage('${m.chave}', this)">
           ${m.icone}
           ${m.label}
+          ${m.chave === 'dashboard' ? '<span class="nav-badge" id="nav-dashboard-badge">0</span>' : ''}
         </button>
       `).join('')}
     </div>

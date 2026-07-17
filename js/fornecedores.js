@@ -30,7 +30,10 @@ const SUP_ICON_PATHS = {
   moreVertical: '<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>',
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   bellOff: '<path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><line x1="2" y1="2" x2="22" y2="22"/>',
-  xCircle: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>'
+  xCircle: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  circleEmpty: '<circle cx="12" cy="12" r="9"/>',
+  wave: '<path d="M18 11c0-3.87-1.34-7-3-7-1 0-1.5 1-3 1s-2-1-3-1c-1.66 0-3 3.13-3 7 0 5 2 9 6 9"/><path d="M18 11a2 2 0 1 1 4 0c0 3-2 5-2 5"/>'
 };
 
 function ic(nome, tamanho) {
@@ -117,10 +120,6 @@ function renderAdFornecedores() {
         <span style="display:flex; align-items:center; gap:10px">${vencendoCount.vencidos.length ? `<span style="display:inline-flex; align-items:center; gap:5px">${ic('alertTriangle', 13)} ${vencendoCount.vencidos.length} vencido(s)</span>` : ''}${vencendoCount.proximos.length ? `<span style="display:inline-flex; align-items:center; gap:5px">${ic('clock', 13)} ${vencendoCount.proximos.length} vencendo em breve</span>` : ''}</span>
         <span style="color:var(--text-muted); margin-left:auto">use o filtro "Vencimento" abaixo pra ver quais são</span>
       </div>` : ''}
-    <div class="card" style="display:none; border-left: 3px solid var(--accent)">
-      <div class="card-title" style="display:flex; align-items:center; gap:7px">${ic('inbox', 15)} Documentos enviados pelo portal — aguardando aprovação</div>
-      <div id="pendentes-aprovacao-wrap"></div>
-    </div>
     <div class="card sup-new-card ${_novoFornecedorAberto ? 'open' : ''}" id="novo-fornecedor-card">
       <div class="sup-new-card-header" onclick="toggleNovoFornecedorCard()">
         <div class="sup-new-icon">+</div>
@@ -178,7 +177,6 @@ function renderAdFornecedores() {
     <div id="fornecedores-lista-ad"></div>
   `;
   renderFornecedoresListaAd();
-  renderPendentesAprovacao();
 }
 
 function mudarAbaFornecedores(aba) {
@@ -857,93 +855,6 @@ function d_nomeFornecedor(id) {
   const d = db();
   const f = d.fornecedores.find(x => x.id === id);
   return f ? f.nome : id;
-}
-
-function renderPendentesAprovacao() {
-  const d = db();
-  const wrap = document.getElementById('pendentes-aprovacao-wrap');
-  if (!wrap) return;
-  const pendentes = (d.documentosPendentesAprovacao || []).filter(p => p.status === 'pendente');
-
-  if (!pendentes.length) { wrap.parentElement.style.display = 'none'; return; }
-  wrap.parentElement.style.display = 'block';
-
-  wrap.innerHTML = pendentes.map(p => {
-    const forn = d.fornecedores.find(f => f.id === p.fornecedorId);
-    const doc = d.documentos.find(x => x.id === p.documentoId);
-    return `
-      <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px">
-        <div style="flex:1">
-          <b>${forn ? forn.nome : '—'}</b> enviou <b>${doc ? doc.nome : p.nomeArquivo}</b>
-          <div style="font-size:11px; color:var(--text-muted)">Nova validade: ${new Date(p.novaValidade + 'T00:00:00').toLocaleDateString('pt-BR')} · enviado em ${new Date(p.enviadoEm).toLocaleDateString('pt-BR')}</div>
-        </div>
-        ${p.caminhoStorage ? `<button class="btn btn-secondary btn-sm" onclick="baixarPendenteAprovacao('${p.id}')">${ic('fileText', 13)} Ver</button>` : ''}
-        <button class="btn btn-primary btn-sm" onclick="aprovarPendenteAprovacao('${p.id}')">${ic('check', 13)} Aprovar</button>
-        <button class="btn btn-danger btn-sm" onclick="rejeitarPendenteAprovacao('${p.id}')">${ic('x', 13)} Rejeitar</button>
-      </div>`;
-  }).join('');
-}
-
-async function baixarPendenteAprovacao(pendenteId) {
-  const d = db();
-  const p = (d.documentosPendentesAprovacao || []).find(x => x.id === pendenteId);
-  if (!p || !p.caminhoStorage) return;
-  const { data, error } = await supabaseClient.storage.from('documentos-fornecedores').download(p.caminhoStorage);
-  if (error) { toast('Erro ao abrir arquivo: ' + error.message); return; }
-  const url = URL.createObjectURL(data);
-  const link = document.createElement('a');
-  link.href = url; link.download = p.nomeArquivo || 'documento';
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-async function aprovarPendenteAprovacao(pendenteId) {
-  const d = db();
-  const p = (d.documentosPendentesAprovacao || []).find(x => x.id === pendenteId);
-  if (!p) return;
-  const doc = d.documentos.find(x => x.id === p.documentoId);
-  if (!doc) { toast('Documento original não existe mais.'); return; }
-
-  // Mesma lógica de "substituir arquivo": guarda a versão atual no histórico.
-  if (doc.caminhoStorage) {
-    await supabaseClient.from('documentos_versoes').insert({
-      documento_id: doc.id, empresa_id: currentUser.empresaId,
-      nome_arquivo: doc.nomeArquivo, caminho_storage: doc.caminhoStorage, substituido_por: currentUser.id,
-    });
-  }
-
-  const { error: updErr } = await supabaseClient.from('documentos').update({
-    validade: p.novaValidade, nome_arquivo: p.nomeArquivo, caminho_storage: p.caminhoStorage, cobrado_em: null,
-  }).eq('id', doc.id);
-  if (updErr) { toast('Erro ao aprovar: ' + updErr.message); return; }
-
-  const { error: pendErr } = await supabaseClient.from('documentos_pendentes_aprovacao').update({
-    status: 'aprovado', revisado_por: currentUser.id, revisado_em: new Date().toISOString(),
-  }).eq('id', pendenteId);
-  if (pendErr) { toast('Erro ao atualizar status: ' + pendErr.message); return; }
-
-  if (doc.caminhoStorage) await limparVersoesAntigasDocumento(doc.id);
-
-  addLog('documento_pendente_aprovado', `${currentUser.email} aprovou o documento enviado pelo portal (documento: "${doc.nome}")`);
-  await carregarDocumentos();
-  await carregarDocumentosVersoes();
-  await carregarDocumentosPendentesAprovacao();
-  renderPendentesAprovacao();
-  renderAdFornecedores();
-  toast('Aprovado! O documento já está atualizado.');
-}
-
-async function rejeitarPendenteAprovacao(pendenteId) {
-  const motivo = prompt('Motivo da rejeição (opcional, o fornecedor não vê isso — é só pra seu controle):') || null;
-  const { error } = await supabaseClient.from('documentos_pendentes_aprovacao').update({
-    status: 'rejeitado', motivo_rejeicao: motivo, revisado_por: currentUser.id, revisado_em: new Date().toISOString(),
-  }).eq('id', pendenteId);
-  if (error) { toast('Erro ao rejeitar: ' + error.message); return; }
-
-  addLog('documento_pendente_rejeitado', `${currentUser.email} rejeitou um documento enviado pelo portal`);
-  await carregarDocumentosPendentesAprovacao();
-  renderPendentesAprovacao();
-  toast('Rejeitado. O fornecedor pode enviar de novo pelo mesmo link.');
 }
 
 async function abrirArquivoDoc(docId) {

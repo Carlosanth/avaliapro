@@ -322,35 +322,11 @@ body {
   display: flex;
 }
 
-.notif-bell-fixed {
-  position: fixed;
-  top: 16px;
-  right: 24px;
-  z-index: 40;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  font-size: 17px;
-  display: flex;
+.nav-badge {
+  display: none;
+  margin-left: auto;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: transform .15s, box-shadow .15s;
-}
-
-.notif-bell-fixed:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(8,60,81,0.15);
-}
-
-.notif-bell-fixed #notif-badge {
-  display: none;
-  position: absolute;
-  top: -3px;
-  right: -3px;
   background: var(--danger);
   color: #fff;
   font-size: 10px;
@@ -358,10 +334,36 @@ body {
   min-width: 17px;
   height: 17px;
   border-radius: 9px;
+  padding: 0 5px;
+  flex-shrink: 0;
+}
+
+.alert-collapse-header {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  border: 2px solid var(--bg);
+  gap: 7px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.alert-collapse-header .alert-collapse-chevron {
+  margin-left: auto;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.alert-collapse.open .alert-collapse-chevron {
+  transform: rotate(180deg);
+}
+
+.alert-collapse-body {
+  display: none;
+  margin-top: 8px;
+}
+
+.alert-collapse.open .alert-collapse-body {
+  display: block;
 }
 
 .progresso-overlay {

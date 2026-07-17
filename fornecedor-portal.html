@@ -244,7 +244,7 @@ async function carregar() {
   document.getElementById('head-fornecedor-nome').textContent = data.fornecedorNome;
   // data.fornecedorCnpj é opcional — se sua Edge Function não devolver esse campo, essa linha só some.
   document.getElementById('head-sub').textContent = data.fornecedorCnpj
-    ? `CNPJ: ${data.fornecedorCnpj} — ${data.empresaNome}`
+    ? `CNPJ: ${data.fornecedorCnpj}`
     : data.empresaNome;
 
   renderDocumentos(data.documentos, data.pendentesIds);
