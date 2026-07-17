@@ -366,3 +366,72 @@ function renderAvaliacoesTable(lista, d) {
     </tbody>
   </table>`;
 }
+
+// ---------- APROVAÇÃO DE DOCUMENTOS ENVIADOS PELO PORTAL ----------
+// Essas 3 funções ficavam em fornecedores.js (o bloco de "aguardando
+// aprovação" morava lá) e ficaram pra trás quando o bloco foi movido pra cá.
+// O resto da lógica é idêntica à original, só troquei a chamada de
+// renderPendentesAprovacao() por renderAdDashboard() (que é quem redesenha
+// esse alerta agora).
+
+async function baixarPendenteAprovacao(pendenteId) {
+  const d = db();
+  const p = (d.documentosPendentesAprovacao || []).find(x => x.id === pendenteId);
+  if (!p || !p.caminhoStorage) return;
+  const { data, error } = await supabaseClient.storage.from('documentos-fornecedores').download(p.caminhoStorage);
+  if (error) { toast('Erro ao abrir arquivo: ' + error.message); return; }
+  const url = URL.createObjectURL(data);
+  const link = document.createElement('a');
+  link.href = url; link.download = p.nomeArquivo || 'documento';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function aprovarPendenteAprovacao(pendenteId) {
+  const d = db();
+  const p = (d.documentosPendentesAprovacao || []).find(x => x.id === pendenteId);
+  if (!p) return;
+  const doc = d.documentos.find(x => x.id === p.documentoId);
+  if (!doc) { toast('Documento original não existe mais.'); return; }
+
+  // Mesma lógica de "substituir arquivo": guarda a versão atual no histórico.
+  if (doc.caminhoStorage) {
+    await supabaseClient.from('documentos_versoes').insert({
+      documento_id: doc.id, empresa_id: currentUser.empresaId,
+      nome_arquivo: doc.nomeArquivo, caminho_storage: doc.caminhoStorage, substituido_por: currentUser.id,
+    });
+  }
+
+  const { error: updErr } = await supabaseClient.from('documentos').update({
+    validade: p.novaValidade, nome_arquivo: p.nomeArquivo, caminho_storage: p.caminhoStorage, cobrado_em: null,
+  }).eq('id', doc.id);
+  if (updErr) { toast('Erro ao aprovar: ' + updErr.message); return; }
+
+  const { error: pendErr } = await supabaseClient.from('documentos_pendentes_aprovacao').update({
+    status: 'aprovado', revisado_por: currentUser.id, revisado_em: new Date().toISOString(),
+  }).eq('id', pendenteId);
+  if (pendErr) { toast('Erro ao atualizar status: ' + pendErr.message); return; }
+
+  if (doc.caminhoStorage) await limparVersoesAntigasDocumento(doc.id);
+
+  addLog('documento_pendente_aprovado', `${currentUser.email} aprovou o documento enviado pelo portal (documento: "${doc.nome}")`);
+  await carregarDocumentos();
+  await carregarDocumentosVersoes();
+  await carregarDocumentosPendentesAprovacao();
+  renderAdDashboard();
+  if (typeof renderAdFornecedores === 'function') renderAdFornecedores();
+  toast('Aprovado! O documento já está atualizado.');
+}
+
+async function rejeitarPendenteAprovacao(pendenteId) {
+  const motivo = prompt('Motivo da rejeição (opcional, o fornecedor não vê isso — é só pra seu controle):') || null;
+  const { error } = await supabaseClient.from('documentos_pendentes_aprovacao').update({
+    status: 'rejeitado', motivo_rejeicao: motivo, revisado_por: currentUser.id, revisado_em: new Date().toISOString(),
+  }).eq('id', pendenteId);
+  if (error) { toast('Erro ao rejeitar: ' + error.message); return; }
+
+  addLog('documento_pendente_rejeitado', `${currentUser.email} rejeitou um documento enviado pelo portal`);
+  await carregarDocumentosPendentesAprovacao();
+  renderAdDashboard();
+  toast('Rejeitado. O fornecedor pode enviar de novo pelo mesmo link.');
+}
